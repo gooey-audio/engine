@@ -547,6 +547,9 @@ dependencies = [
  "anyhow",
  "clap",
  "cpal",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

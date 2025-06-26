@@ -1,0 +1,20 @@
+[package]
+name = "oscillator"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["native"]
+native = []
+web = []
+
+[dependencies]
+cpal = "0.15"
+anyhow = "1.0"
+clap = { version = "4.0", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", optional = true, features = ["AudioContext"] }
