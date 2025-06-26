@@ -124,16 +124,16 @@ export default function WasmTest() {
         </button>
       </div>
       
-      <div className="mt-6 p-4 bg-gray-100 rounded">
+      <div className="mt-6 p-4 bg-gray-800 rounded">
         <h2 className="font-semibold mb-2">Status:</h2>
         <p>WASM Loaded: {isLoaded ? '✅ Yes' : '❌ No'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
       </div>
       
-      <div className="mt-4 p-4 bg-yellow-100 rounded">
-        <h3 className="font-semibold mb-2">Instructions:</h3>
-        <ol className="list-decimal list-inside text-sm space-y-1">
+      <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded">
+        <h3 className="font-semibold mb-2 text-yellow-300">Instructions:</h3>
+        <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
           <li>Click "Load WASM" to initialize the audio engine</li>
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Click "Trigger Drum Hit" to hear the oscillator</li>
