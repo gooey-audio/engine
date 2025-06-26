@@ -29,8 +29,7 @@ impl AudioState {
 
 #[cfg(feature = "native")]
 fn main() -> anyhow::Result<()> {
-    use oscillator::AudioState;
-    use oscillator::native::stream_setup_for;
+    // AudioState is defined in this file, and stream_setup_for is also in this file
 
     let audio_state = Arc::new(Mutex::new(AudioState::new()));
     let stream = stream_setup_for(audio_state.clone())?;
