@@ -69,6 +69,10 @@ impl Oscillator {
     }
 
     pub fn set_volume(&mut self, volume: f32) {
+        self.volume = volume.clamp(0.0, 1.0);
+    }
+
+    pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume;
     }
 
@@ -82,4 +86,4 @@ impl Oscillator {
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume
     }
-} 
+}
