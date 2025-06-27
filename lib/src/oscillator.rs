@@ -1,4 +1,4 @@
-use crate::envelope::Envelope;
+use crate::envelope::{Envelope, ADSRConfig};
 use crate::waveform::Waveform;
 
 pub struct Oscillator {
@@ -68,8 +68,16 @@ impl Oscillator {
         self.envelope.trigger(time);
     }
 
+    pub fn release(&mut self, time: f32) {
+        self.envelope.release(time);
+    }
+
     pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume.clamp(0.0, 1.0);
+    }
+
+    pub fn set_adsr(&mut self, config: ADSRConfig) {
+        self.envelope.set_config(config);
     }
 
     pub fn tick(&mut self, current_time: f32) -> f32 {
