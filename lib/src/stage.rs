@@ -1,3 +1,4 @@
+use crate::envelope::ADSRConfig;
 use crate::oscillator::Oscillator;
 
 pub struct Stage {
@@ -53,6 +54,24 @@ impl Stage {
             instrument.volume
         } else {
             0.0
+        }
+    }
+
+    pub fn release_instrument(&mut self, index: usize, time: f32) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.release(time);
+        }
+    }
+
+    pub fn release_all(&mut self, time: f32) {
+        for instrument in &mut self.instruments {
+            instrument.release(time);
+        }
+    }
+
+    pub fn set_instrument_adsr(&mut self, index: usize, config: ADSRConfig) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.set_adsr(config);
         }
     }
 
