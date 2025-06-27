@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import init, { WasmStage } from '../public/wasm/oscillator.js';
+import init, { WasmStage, WasmFMOscillator } from '../public/wasm/oscillator.js';
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const fmOscillatorRef = useRef<WasmFMOscillator | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -18,6 +19,18 @@ export default function WasmTest() {
     { attack: 0.001, decay: 0.02, sustain: 0.2, release: 0.05 }, // Hi-hat
     { attack: 0.005, decay: 0.2, sustain: 0.8, release: 0.5 }, // Cymbal
   ]);
+
+  // FM Oscillator state
+  const [fmEnabled, setFmEnabled] = useState(false);
+  const [fmCarrierFreq, setFmCarrierFreq] = useState(440);
+  const [fmModulatorFreq, setFmModulatorFreq] = useState(220);
+  const [fmVolume, setFmVolume] = useState(0.5);
+  const [fmModIndexAdsr, setFmModIndexAdsr] = useState({
+    attack: 0.001,
+    decay: 0.01,
+    sustain: 0.0,
+    release: 0.001
+  });
 
   async function loadWasm() {
     setIsLoading(true);
@@ -38,12 +51,22 @@ export default function WasmTest() {
       adsrValues.forEach((adsr, index) => {
         stageRef.current?.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
       });
+
+      // Create FM oscillator instance
+      fmOscillatorRef.current = new WasmFMOscillator(44100, fmCarrierFreq, fmModulatorFreq);
+      fmOscillatorRef.current.set_volume(fmVolume);
+      fmOscillatorRef.current.set_mod_index_adsr(
+        fmModIndexAdsr.attack,
+        fmModIndexAdsr.decay,
+        fmModIndexAdsr.sustain,
+        fmModIndexAdsr.release
+      );
       
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
       
       setIsLoaded(true);
-      console.log('WASM Stage with 4 oscillators and Web Audio loaded successfully!');
+      console.log('WASM Stage with 4 oscillators, FM oscillator, and Web Audio loaded successfully!');
     } catch (error) {
       console.error('Failed to load WASM:', error);
       alert('Failed to load WASM module: ' + String(error));
@@ -243,6 +266,103 @@ export default function WasmTest() {
     }
   }
 
+  // FM Oscillator Functions
+  function triggerFMOscillator() {
+    if (!audioContextRef.current || !fmOscillatorRef.current || !isPlaying) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      fmOscillatorRef.current.trigger(currentTime);
+      
+      // Generate audio buffer with FM oscillator
+      const sampleRate = audioContextRef.current.sampleRate;
+      const bufferLength = sampleRate; // 1 second
+      const audioBuffer = audioContextRef.current.createBuffer(1, bufferLength, sampleRate);
+      const channelData = audioBuffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const time = currentTime + (i / sampleRate);
+        // Mix FM oscillator with stage if both are enabled
+        let sample = 0;
+        if (fmEnabled && fmOscillatorRef.current) {
+          sample += fmOscillatorRef.current.tick(time);
+        }
+        if (stageRef.current) {
+          sample += stageRef.current.tick(time);
+        }
+        channelData[i] = sample;
+      }
+      
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      source.start();
+      
+      console.log('FM Oscillator triggered!');
+    } catch (error) {
+      console.error('Failed to trigger FM oscillator:', error);
+      alert('Failed to trigger FM oscillator');
+    }
+  }
+
+  function releaseFMOscillator() {
+    if (!audioContextRef.current || !fmOscillatorRef.current) {
+      alert('Audio not started yet.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      fmOscillatorRef.current.release(currentTime);
+      console.log('FM Oscillator released!');
+    } catch (error) {
+      console.error('Failed to release FM oscillator:', error);
+      alert('Failed to release FM oscillator');
+    }
+  }
+
+  function handleFMCarrierFreqChange(freq: number) {
+    setFmCarrierFreq(freq);
+    if (fmOscillatorRef.current) {
+      fmOscillatorRef.current.set_carrier_freq(freq);
+    }
+  }
+
+  function handleFMModulatorFreqChange(freq: number) {
+    setFmModulatorFreq(freq);
+    if (fmOscillatorRef.current) {
+      fmOscillatorRef.current.set_modulator_freq(freq);
+    }
+  }
+
+  function handleFMVolumeChange(volume: number) {
+    setFmVolume(volume);
+    if (fmOscillatorRef.current) {
+      fmOscillatorRef.current.set_volume(volume);
+    }
+  }
+
+  function handleFMModIndexAdsrChange(param: 'attack' | 'decay' | 'sustain' | 'release', value: number) {
+    setFmModIndexAdsr(prev => {
+      const newAdsr = { ...prev, [param]: value };
+      
+      // Update the FM oscillator with new ADSR values
+      if (fmOscillatorRef.current) {
+        fmOscillatorRef.current.set_mod_index_adsr(
+          newAdsr.attack,
+          newAdsr.decay,
+          newAdsr.sustain,
+          newAdsr.release
+        );
+      }
+      
+      return newAdsr;
+    });
+  }
+
   return (
     <div className="p-8 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">WASM Stage API Test</h1>
@@ -253,7 +373,7 @@ export default function WasmTest() {
           disabled={isLoading || isLoaded}
           className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Loading...' : isLoaded ? 'Stage Loaded (4 Oscillators)' : 'Load Stage'}
+          {isLoading ? 'Loading...' : isLoaded ? 'Stage Loaded (4 Oscillators + FM)' : 'Load Stage'}
         </button>
         
         <button
@@ -473,11 +593,188 @@ export default function WasmTest() {
             Release All Instruments
           </button>
         </div>
+
+        {/* FM Oscillator Section */}
+        <div className="border-t pt-4 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">🎛️ FM Synthesis</h3>
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium">Enable FM</label>
+              <input
+                type="checkbox"
+                checked={fmEnabled}
+                onChange={(e) => setFmEnabled(e.target.checked)}
+                disabled={!isLoaded}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+          
+          {fmEnabled && (
+            <>
+              <div className="flex space-x-2 mb-4">
+                <button
+                  onClick={triggerFMOscillator}
+                  disabled={!isLoaded || !isPlaying}
+                  className="flex-1 px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+                >
+                  🎵 Trigger FM
+                </button>
+                <button
+                  onClick={releaseFMOscillator}
+                  disabled={!isLoaded || !isPlaying}
+                  className="flex-1 px-4 py-2 bg-pink-700 text-white rounded hover:bg-pink-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Release FM
+                </button>
+              </div>
+
+              <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                <h5 className="font-medium mb-3 text-sm">🎛️ FM Parameters</h5>
+                
+                {/* Volume Control */}
+                <div className="flex items-center space-x-2 mb-2">
+                  <label className="w-16 text-xs font-medium">Volume</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={fmVolume}
+                    onChange={(e) => handleFMVolumeChange(parseFloat(e.target.value))}
+                    disabled={!isLoaded}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <span className="w-10 text-xs font-mono text-right">
+                    {fmVolume.toFixed(2)}
+                  </span>
+                </div>
+                
+                {/* Carrier Frequency Control */}
+                <div className="flex items-center space-x-2 mb-2">
+                  <label className="w-16 text-xs font-medium">Carrier</label>
+                  <input
+                    type="range"
+                    min="50"
+                    max="2000"
+                    step="10"
+                    value={fmCarrierFreq}
+                    onChange={(e) => handleFMCarrierFreqChange(parseInt(e.target.value))}
+                    disabled={!isLoaded}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <span className="w-16 text-xs font-mono text-right">
+                    {fmCarrierFreq}Hz
+                  </span>
+                </div>
+                
+                {/* Modulator Frequency Control */}
+                <div className="flex items-center space-x-2 mb-3">
+                  <label className="w-16 text-xs font-medium">Modulator</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="1000"
+                    step="1"
+                    value={fmModulatorFreq}
+                    onChange={(e) => handleFMModulatorFreqChange(parseInt(e.target.value))}
+                    disabled={!isLoaded}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <span className="w-16 text-xs font-mono text-right">
+                    {fmModulatorFreq}Hz
+                  </span>
+                </div>
+                
+                {/* Modulation Index ADSR Controls */}
+                <div className="border-t border-gray-600 pt-2">
+                  <label className="block text-xs font-medium text-gray-300 mb-2">Modulation Index ADSR</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Attack</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0.001"
+                          max="1"
+                          step="0.001"
+                          value={fmModIndexAdsr.attack}
+                          onChange={(e) => handleFMModIndexAdsrChange('attack', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {fmModIndexAdsr.attack.toFixed(3)}s
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Decay</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0.001"
+                          max="1"
+                          step="0.001"
+                          value={fmModIndexAdsr.decay}
+                          onChange={(e) => handleFMModIndexAdsrChange('decay', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {fmModIndexAdsr.decay.toFixed(3)}s
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Sustain</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={fmModIndexAdsr.sustain}
+                          onChange={(e) => handleFMModIndexAdsrChange('sustain', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {fmModIndexAdsr.sustain.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Release</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0.001"
+                          max="2"
+                          step="0.001"
+                          value={fmModIndexAdsr.release}
+                          onChange={(e) => handleFMModIndexAdsrChange('release', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {fmModIndexAdsr.release.toFixed(3)}s
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
       
       <div className="mt-6 p-4 bg-gray-800 rounded">
         <h2 className="font-semibold mb-2">Status:</h2>
         <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
+        <p>FM Oscillator: {fmOscillatorRef.current ? '✅ Ready' : '❌ Not loaded'}</p>
+        <p>FM Enabled: {fmEnabled ? '✅ Yes' : '⏸️ Disabled'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
       </div>
@@ -492,6 +789,8 @@ export default function WasmTest() {
           <li>• <strong>Frequency control</strong>: Adjust frequency (50-2000Hz) for each instrument</li>
           <li>• <strong>Waveform control</strong>: Select waveform type (Sine, Square, Saw, Triangle) for each instrument</li>
           <li>• <strong>ADSR envelope</strong>: Real-time Attack, Decay, Sustain, Release control per instrument</li>
+          <li>• <strong>FM Synthesis</strong>: Dedicated FM oscillator with carrier/modulator frequency control</li>
+          <li>• <strong>FM Modulation Index</strong>: ADSR envelope controls modulation depth over time</li>
           <li>• <strong>Release control</strong>: Manually trigger release phase for individual or all instruments</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
         </ul>
@@ -500,7 +799,7 @@ export default function WasmTest() {
       <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded">
         <h3 className="font-semibold mb-2 text-yellow-300">Instructions:</h3>
         <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
-          <li>Click "Load Stage" to initialize the WASM Stage with 4 oscillators</li>
+          <li>Click "Load Stage" to initialize the WASM Stage with 4 oscillators + FM oscillator</li>
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Use individual instrument buttons to test single oscillators</li>
           <li>Adjust instrument controls for each oscillator:</li>
@@ -515,6 +814,13 @@ export default function WasmTest() {
             <li><strong>Decay:</strong> Time to drop to sustain level (0.001-2s)</li>
             <li><strong>Sustain:</strong> Level held while triggered (0-1)</li>
             <li><strong>Release:</strong> Time to fade to silence (0.001-5s)</li>
+          </ul>
+          <li><strong>FM Synthesis:</strong> Check "Enable FM" to activate FM synthesis controls:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Carrier:</strong> Main frequency that gets modulated (50-2000Hz)</li>
+            <li><strong>Modulator:</strong> Frequency that modulates the carrier (1-1000Hz)</li>
+            <li><strong>Modulation Index ADSR:</strong> Controls how much modulation is applied over time</li>
+            <li><strong>Trigger FM:</strong> Play the FM oscillator sound independently</li>
           </ul>
           <li>Use "Release" buttons to manually trigger the release phase</li>
           <li>Use "Release All" to release all instruments simultaneously</li>
