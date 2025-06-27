@@ -1,0 +1,100 @@
+# Deploy PR previews to fly.io
+name: PR Preview Deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Set up app name
+        id: app-name
+        run: |
+          APP_NAME="engine-pr-${{ github.event.number }}"
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "App name: $APP_NAME"
+
+      - name: Check if app exists
+        id: app-exists
+        run: |
+          if flyctl apps list | grep -q "${{ steps.app-name.outputs.app_name }}"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Create fly.toml for PR
+        run: |
+          sed 's/app = .*/app = "${{ steps.app-name.outputs.app_name }}"/' fly.toml > fly-pr.toml
+          mv fly-pr.toml fly.toml
+
+      - name: Create new fly app
+        if: steps.app-exists.outputs.exists == 'false'
+        run: |
+          flyctl apps create "${{ steps.app-name.outputs.app_name }}" --org personal
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy to fly.io
+        run: |
+          flyctl deploy --remote-only --app "${{ steps.app-name.outputs.app_name }}"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Get app URL
+        id: app-url
+        run: |
+          URL="https://${{ steps.app-name.outputs.app_name }}.fly.dev"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.includes('🚀 Preview Environment')
+            );
+
+            const body = `🚀 **Preview Environment**
+
+Your PR has been deployed to: **${{ steps.app-url.outputs.url }}**
+
+This preview will be updated automatically when you push new commits to this PR.
+
+---
+*Deployed from commit: \`${{ github.event.pull_request.head.sha }}\`*`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
