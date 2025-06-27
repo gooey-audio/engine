@@ -7,7 +7,7 @@ pub struct Oscillator {
     pub current_sample_index: f32,
     pub frequency_hz: f32,
     pub envelope: Envelope,
-    pub volume: f32, // Volume from 0.0 to 1.0
+    pub volume: f32,
 }
 
 impl Oscillator {
@@ -18,7 +18,7 @@ impl Oscillator {
             current_sample_index: 0.0,
             frequency_hz,
             envelope: Envelope::new(),
-            volume: 1.0, // Default to full volume
+            volume: 1.0,
         }
     }
 
@@ -67,9 +67,13 @@ impl Oscillator {
     pub fn trigger(&mut self, time: f32) {
         self.envelope.trigger(time);
     }
-    
+
     pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume.clamp(0.0, 1.0);
+    }
+
+    pub fn set_volume(&mut self, volume: f32) {
+        self.volume = volume;
     }
 
     pub fn tick(&mut self, current_time: f32) -> f32 {
@@ -82,4 +86,4 @@ impl Oscillator {
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume
     }
-} 
+}

@@ -10,13 +10,11 @@ use cpal::{FromSample, Sample};
 use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
 
-mod envelope;
-mod oscillator;
-mod waveform;
-
-use envelope::Envelope;
-use oscillator::Oscillator;
-use waveform::Waveform;
+// Import the ProcessingStage and other components from our audio engine modules
+use crate::stage::ProcessingStage;
+use crate::oscillator::Oscillator;
+use crate::envelope::Envelope;
+use crate::waveform::Waveform;
 
 // Shared state for communication between main thread and audio callback
 pub struct AudioState {
@@ -122,7 +120,7 @@ where
     T: SizedSample + FromSample<f32>,
 {
     let num_channels = config.channels as usize;
-    let mut oscillator = Oscillator::new(
+    let mut stage = ProcessingStage::new(
         config.sample_rate.0 as f32,
         300.0, // Lower frequency for drum-like sound
     );
@@ -138,18 +136,18 @@ where
                 .duration_since(time_at_start)
                 .as_secs_f32();
             
-            // Check if we should trigger the oscillator
+            // Check if we should trigger the stage
             {
                 let mut state = audio_state.lock().unwrap();
                 if state.should_trigger {
-                    oscillator.trigger(time_since_start);
+                    stage.trigger(time_since_start);
                     state.should_trigger = false;
                     state.trigger_time = time_since_start;
                     println!("Drum hit triggered at {:.2}s", time_since_start);
                 }
             }
             
-            process_frame(output, &mut oscillator, num_channels, time_since_start)
+            process_frame(output, &mut stage, num_channels, time_since_start)
         },
         err_fn,
         None,
@@ -160,14 +158,14 @@ where
 
 fn process_frame<SampleType>(
     output: &mut [SampleType],
-    oscillator: &mut Oscillator,
+    stage: &mut ProcessingStage,
     num_channels: usize,
     current_time: f32,
 ) where
     SampleType: Sample + FromSample<f32>,
 {
     for frame in output.chunks_mut(num_channels) {
-        let value: SampleType = SampleType::from_sample(oscillator.tick(current_time));
+        let value: SampleType = SampleType::from_sample(stage.tick(current_time));
 
         // copy the same value to all channels
         for sample in frame.iter_mut() {
