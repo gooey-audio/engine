@@ -72,10 +72,6 @@ impl Oscillator {
         self.volume = volume.clamp(0.0, 1.0);
     }
 
-    pub fn set_volume(&mut self, volume: f32) {
-        self.volume = volume;
-    }
-
     pub fn tick(&mut self, current_time: f32) -> f32 {
         let raw_output = match self.waveform {
             Waveform::Sine => self.sine_wave(),

@@ -10,11 +10,9 @@ use cpal::{FromSample, Sample};
 use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
 
-// Import the ProcessingStage and other components from our audio engine modules
-use crate::stage::ProcessingStage;
-use crate::oscillator::Oscillator;
-use crate::envelope::Envelope;
-use crate::waveform::Waveform;
+// Import the Stage and other components from our audio engine modules
+use oscillator::stage::Stage;
+use oscillator::oscillator::Oscillator;
 
 // Shared state for communication between main thread and audio callback
 pub struct AudioState {
@@ -120,10 +118,12 @@ where
     T: SizedSample + FromSample<f32>,
 {
     let num_channels = config.channels as usize;
-    let mut stage = ProcessingStage::new(
-        config.sample_rate.0 as f32,
-        300.0, // Lower frequency for drum-like sound
-    );
+    let mut stage = Stage::new(config.sample_rate.0 as f32);
+    
+    // Add an oscillator to the stage
+    let oscillator = Oscillator::new(config.sample_rate.0 as f32, 300.0); // Lower frequency for drum-like sound
+    stage.add(oscillator);
+    
     let err_fn = |err| eprintln!("Error building output sound stream: {}", err);
 
     let time_at_start = std::time::Instant::now();
@@ -140,7 +140,7 @@ where
             {
                 let mut state = audio_state.lock().unwrap();
                 if state.should_trigger {
-                    stage.trigger(time_since_start);
+                    stage.trigger_all(time_since_start);
                     state.should_trigger = false;
                     state.trigger_time = time_since_start;
                     println!("Drum hit triggered at {:.2}s", time_since_start);
@@ -158,7 +158,7 @@ where
 
 fn process_frame<SampleType>(
     output: &mut [SampleType],
-    stage: &mut ProcessingStage,
+    stage: &mut Stage,
     num_channels: usize,
     current_time: f32,
 ) where
