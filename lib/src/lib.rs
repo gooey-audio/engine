@@ -143,5 +143,51 @@ pub mod web {
                 crate::waveform::Waveform::Triangle => 3,
             }
         }
+
+        // Sequencer methods
+        #[wasm_bindgen]
+        pub fn sequencer_start(&mut self, current_time: f32) {
+            self.stage.sequencer_start(current_time);
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_stop(&mut self) {
+            self.stage.sequencer_stop();
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_reset(&mut self, current_time: f32) {
+            self.stage.sequencer_reset(current_time);
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_set_step(&mut self, instrument_index: usize, step_index: usize, enabled: bool) {
+            self.stage.sequencer_set_step(instrument_index, step_index, enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_get_step(&self, instrument_index: usize, step_index: usize) -> bool {
+            self.stage.sequencer_get_step(instrument_index, step_index)
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_get_current_step(&self) -> usize {
+            self.stage.sequencer_get_current_step()
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_is_playing(&self) -> bool {
+            self.stage.sequencer_is_playing()
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_set_bpm(&mut self, bpm: f32) {
+            self.stage.sequencer_set_bpm(bpm);
+        }
+
+        #[wasm_bindgen]
+        pub fn sequencer_get_bpm(&self) -> f32 {
+            self.stage.sequencer_get_bpm()
+        }
     }
 } 

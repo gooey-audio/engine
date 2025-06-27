@@ -18,6 +18,15 @@ export default function WasmTest() {
     { attack: 0.001, decay: 0.02, sustain: 0.2, release: 0.05 }, // Hi-hat
     { attack: 0.005, decay: 0.2, sustain: 0.8, release: 0.5 }, // Cymbal
   ]);
+  
+  // Sequencer state
+  const [sequencerSteps, setSequencerSteps] = useState<boolean[][]>(
+    Array(4).fill(null).map(() => Array(16).fill(false))
+  );
+  const [isSequencerPlaying, setIsSequencerPlaying] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [bpm, setBpm] = useState(120);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   async function loadWasm() {
     setIsLoading(true);
@@ -243,8 +252,118 @@ export default function WasmTest() {
     }
   }
 
+  // Sequencer functions
+  function toggleSequencerStep(instrumentIndex: number, stepIndex: number) {
+    if (!stageRef.current) return;
+    
+    const newValue = !sequencerSteps[instrumentIndex][stepIndex];
+    
+    // Update WASM sequencer
+    stageRef.current.sequencer_set_step(instrumentIndex, stepIndex, newValue);
+    
+    // Update local state
+    setSequencerSteps(prev => {
+      const newSteps = prev.map(row => [...row]);
+      newSteps[instrumentIndex][stepIndex] = newValue;
+      return newSteps;
+    });
+  }
+
+  function startSequencer() {
+    if (!audioContextRef.current || !stageRef.current || !isPlaying) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      stageRef.current.sequencer_start(currentTime);
+      setIsSequencerPlaying(true);
+      
+      // Start UI update interval to track current step
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      intervalRef.current = setInterval(() => {
+        if (stageRef.current) {
+          setCurrentStep(stageRef.current.sequencer_get_current_step());
+        }
+      }, 50); // Update every 50ms for smooth UI
+      
+      console.log('Sequencer started!');
+    } catch (error) {
+      console.error('Failed to start sequencer:', error);
+      alert('Failed to start sequencer');
+    }
+  }
+
+  function stopSequencer() {
+    if (!stageRef.current) return;
+
+    try {
+      stageRef.current.sequencer_stop();
+      setIsSequencerPlaying(false);
+      
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      
+      console.log('Sequencer stopped!');
+    } catch (error) {
+      console.error('Failed to stop sequencer:', error);
+      alert('Failed to stop sequencer');
+    }
+  }
+
+  function resetSequencer() {
+    if (!audioContextRef.current || !stageRef.current) return;
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      stageRef.current.sequencer_reset(currentTime);
+      setCurrentStep(0);
+      console.log('Sequencer reset!');
+    } catch (error) {
+      console.error('Failed to reset sequencer:', error);
+      alert('Failed to reset sequencer');
+    }
+  }
+
+  function clearAllSteps() {
+    if (!stageRef.current) return;
+
+    // Clear all steps in WASM
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 16; j++) {
+        stageRef.current.sequencer_set_step(i, j, false);
+      }
+    }
+
+    // Clear local state
+    setSequencerSteps(Array(4).fill(null).map(() => Array(16).fill(false)));
+    console.log('All sequencer steps cleared!');
+  }
+
+  function handleBpmChange(newBpm: number) {
+    if (!stageRef.current) return;
+    
+    stageRef.current.sequencer_set_bpm(newBpm);
+    setBpm(newBpm);
+  }
+
+  // Cleanup interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <div className="p-8 max-w-lg mx-auto">
+    <div className="p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">WASM Stage API Test</h1>
       
       <div className="space-y-4">
@@ -265,7 +384,114 @@ export default function WasmTest() {
         </button>
         
         <div className="border-t pt-4">
-          <h3 className="font-semibold mb-3 text-center">Instrument Controls</h3>
+          <h3 className="font-semibold mb-4 text-center">16-Step Sequencer (120 BPM)</h3>
+          
+          {/* Sequencer Transport Controls */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={isSequencerPlaying ? stopSequencer : startSequencer}
+              disabled={!isLoaded || !isPlaying}
+              className={`px-4 py-2 rounded font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed ${
+                isSequencerPlaying 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-green-500 hover:bg-green-600 text-white'
+              }`}
+            >
+              {isSequencerPlaying ? '⏹️ Stop' : '▶️ Play'} Sequencer
+            </button>
+            
+            <button
+              onClick={resetSequencer}
+              disabled={!isLoaded}
+              className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              ⏮️ Reset
+            </button>
+            
+            <button
+              onClick={clearAllSteps}
+              disabled={!isLoaded}
+              className="px-3 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              🧹 Clear
+            </button>
+          </div>
+
+          {/* BPM Control */}
+          <div className="flex items-center space-x-2 mb-4">
+            <label className="font-medium text-sm">BPM:</label>
+            <input
+              type="range"
+              min="60"
+              max="180"
+              step="1"
+              value={bpm}
+              onChange={(e) => handleBpmChange(parseInt(e.target.value))}
+              disabled={!isLoaded}
+              className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+            />
+            <span className="font-mono text-sm w-10 text-right">{bpm}</span>
+          </div>
+
+          {/* Step Grid */}
+          <div className="bg-gray-800 p-4 rounded-lg mb-4">
+            <div className="mb-2">
+              <div className="text-xs text-gray-400 mb-1">Step:</div>
+              <div className="flex gap-1 mb-3">
+                {Array.from({ length: 16 }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`h-6 w-6 rounded text-xs flex items-center justify-center font-mono ${
+                      currentStep === i && isSequencerPlaying
+                        ? 'bg-yellow-500 text-black'
+                        : 'bg-gray-600 text-gray-300'
+                    }`}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Instrument Step Grid */}
+            {[
+              { name: '🥁 Bass', color: 'red', index: 0 },
+              { name: '🥁 Snare', color: 'orange', index: 1 },
+              { name: '🔔 Hi-hat', color: 'yellow', index: 2 },
+              { name: '🥽 Cymbal', color: 'cyan', index: 3 }
+            ].map((instrument) => (
+              <div key={instrument.index} className="mb-2">
+                <div className="text-xs text-gray-400 mb-1">{instrument.name}:</div>
+                <div className="flex gap-1">
+                  {Array.from({ length: 16 }, (_, stepIndex) => (
+                    <button
+                      key={stepIndex}
+                      onClick={() => toggleSequencerStep(instrument.index, stepIndex)}
+                      disabled={!isLoaded}
+                      className={`h-6 w-6 rounded border border-gray-600 disabled:cursor-not-allowed ${
+                        sequencerSteps[instrument.index][stepIndex]
+                          ? (instrument.color === 'red' ? 'bg-red-500 hover:bg-red-600' :
+                             instrument.color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
+                             instrument.color === 'yellow' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                             'bg-cyan-500 hover:bg-cyan-600')
+                          : 'bg-gray-700 hover:bg-gray-600'
+                      } ${
+                        currentStep === stepIndex && isSequencerPlaying
+                          ? 'ring-2 ring-yellow-400'
+                          : ''
+                      }`}
+                    >
+                      {sequencerSteps[instrument.index][stepIndex] ? '●' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t pt-4">
+          <h3 className="font-semibold mb-3 text-center">Manual Instrument Controls</h3>
           
           <button
             onClick={triggerAll}
@@ -480,12 +706,16 @@ export default function WasmTest() {
         <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
+        <p>Sequencer: {isSequencerPlaying ? `✅ Playing (Step ${currentStep + 1}/16, ${bpm} BPM)` : '⏸️ Stopped'}</p>
       </div>
       
       <div className="mt-4 p-4 bg-blue-900/20 border border-blue-600/30 rounded">
         <h3 className="font-semibold mb-2 text-blue-300">Stage API Demo:</h3>
         <ul className="text-sm space-y-1 text-blue-100">
           <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators with independent controls</li>
+          <li>• <strong>16-Step Sequencer</strong>: Automatic timing and triggering at 120 BPM (adjustable 60-180)</li>
+          <li>• <strong>Pattern Programming</strong>: Click checkboxes to program drum patterns for each instrument</li>
+          <li>• <strong>Real-time Control</strong>: Start/stop/reset sequencer while audio is playing</li>
           <li>• <strong>Individual control</strong>: Trigger each instrument separately</li>
           <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
           <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument</li>
@@ -502,7 +732,16 @@ export default function WasmTest() {
         <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
           <li>Click "Load Stage" to initialize the WASM Stage with 4 oscillators</li>
           <li>Click "Start Audio" to begin audio processing</li>
-          <li>Use individual instrument buttons to test single oscillators</li>
+          <li><strong>Using the Sequencer:</strong></li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Program patterns:</strong> Click checkboxes in the 16-step grid for each instrument</li>
+            <li><strong>Adjust BPM:</strong> Use the slider to change tempo (60-180 BPM)</li>
+            <li><strong>Play/Stop:</strong> Use sequencer transport controls to start/stop playback</li>
+            <li><strong>Reset:</strong> Jump back to step 1 without stopping</li>
+            <li><strong>Clear:</strong> Remove all programmed steps</li>
+            <li><strong>Live editing:</strong> Change patterns while sequencer is playing</li>
+          </ul>
+          <li><strong>Manual Control:</strong> Use individual instrument buttons to test single oscillators</li>
           <li>Adjust instrument controls for each oscillator:</li>
           <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
             <li><strong>Volume:</strong> Control relative volume of each instrument (0.0-1.0)</li>
