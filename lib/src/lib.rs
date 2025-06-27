@@ -5,6 +5,8 @@ pub mod envelope;
 pub mod waveform;
 pub mod audio_state;
 pub mod stage;
+pub mod fm_oscillator;
+pub mod instrument;
 
 // WASM bindings (web)
 #[cfg(feature = "web")]
@@ -12,6 +14,7 @@ pub mod web {
     use super::oscillator::Oscillator;
     use super::stage::Stage;
     use super::envelope::ADSRConfig;
+    use super::fm_oscillator::FMOscillator;
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -47,6 +50,57 @@ pub mod web {
         pub fn set_adsr(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) {
             let config = ADSRConfig::new(attack, decay, sustain, release);
             self.oscillator.set_adsr(config);
+        }
+    }
+
+    #[wasm_bindgen]
+    pub struct WasmFMOscillator {
+        fm_oscillator: FMOscillator,
+    }
+
+    #[wasm_bindgen]
+    impl WasmFMOscillator {
+        #[wasm_bindgen(constructor)]
+        pub fn new(sample_rate: f32, carrier_freq: f32, modulator_freq: f32) -> WasmFMOscillator {
+            WasmFMOscillator {
+                fm_oscillator: FMOscillator::new(sample_rate, carrier_freq, modulator_freq),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn trigger(&mut self, time: f32) {
+            self.fm_oscillator.trigger(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn tick(&mut self, current_time: f32) -> f32 {
+            self.fm_oscillator.tick(current_time)
+        }
+
+        #[wasm_bindgen]
+        pub fn release(&mut self, time: f32) {
+            self.fm_oscillator.release(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_volume(&mut self, volume: f32) {
+            self.fm_oscillator.set_volume(volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_carrier_freq(&mut self, freq: f32) {
+            self.fm_oscillator.set_carrier_freq(freq);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_modulator_freq(&mut self, freq: f32) {
+            self.fm_oscillator.set_modulator_freq(freq);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_mod_index_adsr(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) {
+            let config = ADSRConfig::new(attack, decay, sustain, release);
+            self.fm_oscillator.set_mod_index_adsr(config);
         }
     }
 
