@@ -1,0 +1,42 @@
+name: PR Preview Cleanup
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    name: Cleanup PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Destroy preview app
+        id: cleanup
+        run: |
+          APP_NAME="engine-pr-${{ github.event.number }}"
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+          
+          # Check if app exists before trying to destroy
+          if flyctl apps list | grep -q "$APP_NAME"; then
+            flyctl apps destroy "$APP_NAME" --yes
+            echo "destroyed=true" >> $GITHUB_OUTPUT
+          else
+            echo "destroyed=false" >> $GITHUB_OUTPUT
+            echo "App $APP_NAME not found, nothing to clean up"
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Comment on PR
+        if: steps.cleanup.outputs.destroyed == 'true'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.number }}
+          body: |
+            ## 🧹 PR Preview Cleanup
+
+            The preview environment for this PR has been cleaned up.
+
+            **Destroyed app:** `${{ steps.cleanup.outputs.app_name }}`
