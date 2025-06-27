@@ -18,6 +18,14 @@ export default function WasmTest() {
     { attack: 0.001, decay: 0.02, sustain: 0.2, release: 0.05 }, // Hi-hat
     { attack: 0.005, decay: 0.2, sustain: 0.8, release: 0.5 }, // Cymbal
   ]);
+  const [compressorSettings, setCompressorSettings] = useState({
+    enabled: true,
+    threshold: -12.0,
+    ratio: 4.0,
+    attack: 0.003,
+    release: 0.1,
+    makeupGain: 0.0,
+  });
 
   async function loadWasm() {
     setIsLoading(true);
@@ -38,6 +46,14 @@ export default function WasmTest() {
       adsrValues.forEach((adsr, index) => {
         stageRef.current?.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
       });
+      
+      // Initialize compressor settings
+      stageRef.current?.set_compressor_enabled(compressorSettings.enabled);
+      stageRef.current?.set_compressor_threshold(compressorSettings.threshold);
+      stageRef.current?.set_compressor_ratio(compressorSettings.ratio);
+      stageRef.current?.set_compressor_attack(compressorSettings.attack);
+      stageRef.current?.set_compressor_release(compressorSettings.release);
+      stageRef.current?.set_compressor_makeup_gain(compressorSettings.makeupGain);
       
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
@@ -208,6 +224,40 @@ export default function WasmTest() {
       }
       
       return newAdsrValues;
+    });
+  }
+
+  function handleCompressorChange(param: 'enabled' | 'threshold' | 'ratio' | 'attack' | 'release' | 'makeupGain', value: number | boolean) {
+    if (!stageRef.current) return;
+    
+    setCompressorSettings(prev => {
+      const newSettings = { ...prev, [param]: value };
+      
+      // Update the WASM stage with new compressor values
+      if (stageRef.current) {
+        switch (param) {
+          case 'enabled':
+            stageRef.current.set_compressor_enabled(value as boolean);
+            break;
+          case 'threshold':
+            stageRef.current.set_compressor_threshold(value as number);
+            break;
+          case 'ratio':
+            stageRef.current.set_compressor_ratio(value as number);
+            break;
+          case 'attack':
+            stageRef.current.set_compressor_attack(value as number);
+            break;
+          case 'release':
+            stageRef.current.set_compressor_release(value as number);
+            break;
+          case 'makeupGain':
+            stageRef.current.set_compressor_makeup_gain(value as number);
+            break;
+        }
+      }
+      
+      return newSettings;
     });
   }
 
@@ -473,6 +523,129 @@ export default function WasmTest() {
             Release All Instruments
           </button>
         </div>
+
+        {/* Compressor Controls */}
+        <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700">
+          <h3 className="font-semibold mb-3 text-center">🎛️ Master Compressor</h3>
+          
+          {/* Enable/Disable Toggle */}
+          <div className="flex items-center justify-center mb-4">
+            <label className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                checked={compressorSettings.enabled}
+                onChange={(e) => handleCompressorChange('enabled', e.target.checked)}
+                disabled={!isLoaded}
+                className="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 disabled:cursor-not-allowed"
+              />
+              <span className="text-sm font-medium">
+                {compressorSettings.enabled ? '✅ Enabled' : '❌ Disabled'}
+              </span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Threshold Control */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Threshold</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="-40"
+                  max="0"
+                  step="0.1"
+                  value={compressorSettings.threshold}
+                  onChange={(e) => handleCompressorChange('threshold', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-14 text-xs font-mono text-right">
+                  {compressorSettings.threshold.toFixed(1)}dB
+                </span>
+              </div>
+            </div>
+
+            {/* Ratio Control */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Ratio</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value={compressorSettings.ratio}
+                  onChange={(e) => handleCompressorChange('ratio', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-14 text-xs font-mono text-right">
+                  {compressorSettings.ratio.toFixed(1)}:1
+                </span>
+              </div>
+            </div>
+
+            {/* Attack Control */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Attack</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="0.001"
+                  max="0.1"
+                  step="0.001"
+                  value={compressorSettings.attack}
+                  onChange={(e) => handleCompressorChange('attack', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-14 text-xs font-mono text-right">
+                  {(compressorSettings.attack * 1000).toFixed(0)}ms
+                </span>
+              </div>
+            </div>
+
+            {/* Release Control */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Release</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="0.01"
+                  max="1"
+                  step="0.01"
+                  value={compressorSettings.release}
+                  onChange={(e) => handleCompressorChange('release', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-14 text-xs font-mono text-right">
+                  {(compressorSettings.release * 1000).toFixed(0)}ms
+                </span>
+              </div>
+            </div>
+
+            {/* Makeup Gain Control */}
+            <div className="col-span-2">
+              <label className="block text-xs text-gray-400 mb-1">Makeup Gain</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="range"
+                  min="-20"
+                  max="20"
+                  step="0.1"
+                  value={compressorSettings.makeupGain}
+                  onChange={(e) => handleCompressorChange('makeupGain', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-14 text-xs font-mono text-right">
+                  {compressorSettings.makeupGain.toFixed(1)}dB
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       
       <div className="mt-6 p-4 bg-gray-800 rounded">
@@ -480,6 +653,7 @@ export default function WasmTest() {
         <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
+        <p>Compressor: {compressorSettings.enabled ? '✅ Enabled' : '❌ Disabled'}</p>
       </div>
       
       <div className="mt-4 p-4 bg-blue-900/20 border border-blue-600/30 rounded">
@@ -494,6 +668,8 @@ export default function WasmTest() {
           <li>• <strong>ADSR envelope</strong>: Real-time Attack, Decay, Sustain, Release control per instrument</li>
           <li>• <strong>Release control</strong>: Manually trigger release phase for individual or all instruments</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
+          <li>• <strong>Master compressor</strong>: Dynamic range compression applied to final mixed output</li>
+          <li>• <strong>Compressor controls</strong>: Threshold, ratio, attack, release, makeup gain, and enable/disable</li>
         </ul>
       </div>
 
@@ -518,7 +694,16 @@ export default function WasmTest() {
           </ul>
           <li>Use "Release" buttons to manually trigger the release phase</li>
           <li>Use "Release All" to release all instruments simultaneously</li>
-          <li>Use "Trigger All" to hear the mixed output of all instruments with all controls applied</li>
+          <li>Adjust the <strong>Master Compressor</strong> settings to shape the final output dynamics:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Enabled:</strong> Toggle compressor on/off</li>
+            <li><strong>Threshold:</strong> Level above which compression starts (-40dB to 0dB)</li>
+            <li><strong>Ratio:</strong> Amount of compression applied (1:1 to 20:1)</li>
+            <li><strong>Attack:</strong> How quickly compression engages (1ms to 100ms)</li>
+            <li><strong>Release:</strong> How quickly compression disengages (10ms to 1s)</li>
+            <li><strong>Makeup Gain:</strong> Compensate for level reduction (-20dB to +20dB)</li>
+          </ul>
+          <li>Use "Trigger All" to hear the mixed output of all instruments with compressor processing applied</li>
         </ol>
       </div>
     </div>
