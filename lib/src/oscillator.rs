@@ -8,6 +8,7 @@ pub struct Oscillator {
     pub frequency_hz: f32,
     pub envelope: Envelope,
     pub volume: f32,
+    pub enabled: bool,
 }
 
 impl Oscillator {
@@ -19,6 +20,7 @@ impl Oscillator {
             frequency_hz,
             envelope: Envelope::new(),
             volume: 1.0,
+            enabled: true,
         }
     }
 
@@ -80,7 +82,18 @@ impl Oscillator {
         self.envelope.set_config(config);
     }
 
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        if !self.enabled {
+            return 0.0;
+        }
         let raw_output = match self.waveform {
             Waveform::Sine => self.sine_wave(),
             Waveform::Square => self.square_wave(),
