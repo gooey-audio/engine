@@ -10,6 +10,12 @@ export default function WasmTest() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
+  const [adsrValues, setAdsrValues] = useState([
+    { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }, // Bass Drum
+    { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.1 }, // Snare
+    { attack: 0.001, decay: 0.02, sustain: 0.2, release: 0.05 }, // Hi-hat
+    { attack: 0.005, decay: 0.2, sustain: 0.8, release: 0.5 }, // Cymbal
+  ]);
 
   async function loadWasm() {
     setIsLoading(true);
@@ -25,6 +31,11 @@ export default function WasmTest() {
       stageRef.current.add_oscillator(44100, 300); // Snare
       stageRef.current.add_oscillator(44100, 440); // Hi-hat
       stageRef.current.add_oscillator(44100, 600); // Cymbal
+      
+      // Initialize ADSR settings for each instrument
+      adsrValues.forEach((adsr, index) => {
+        stageRef.current?.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
+      });
       
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
@@ -152,6 +163,54 @@ export default function WasmTest() {
     });
   }
 
+  function handleAdsrChange(index: number, param: 'attack' | 'decay' | 'sustain' | 'release', value: number) {
+    if (!stageRef.current) return;
+    
+    // Update local state for UI
+    setAdsrValues(prev => {
+      const newAdsrValues = [...prev];
+      newAdsrValues[index] = { ...newAdsrValues[index], [param]: value };
+      
+      // Update the WASM stage with new ADSR values
+      const adsr = newAdsrValues[index];
+      stageRef.current.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
+      
+      return newAdsrValues;
+    });
+  }
+
+  function releaseInstrument(index: number, name: string) {
+    if (!audioContextRef.current || !stageRef.current) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      stageRef.current.release_instrument(index, currentTime);
+      console.log(`${name} released!`);
+    } catch (error) {
+      console.error(`Failed to release ${name}:`, error);
+      alert(`Failed to release ${name}`);
+    }
+  }
+
+  function releaseAll() {
+    if (!audioContextRef.current || !stageRef.current) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      stageRef.current.release_all(currentTime);
+      console.log('All instruments released!');
+    } catch (error) {
+      console.error('Failed to release all instruments:', error);
+      alert('Failed to release all instruments');
+    }
+  }
+
   return (
     <div className="p-8 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">WASM Stage API Test</h1>
@@ -248,6 +307,114 @@ export default function WasmTest() {
               ))}
             </div>
           </div>
+
+          <div className="mt-6">
+            <h4 className="font-semibold mb-3 text-center">ADSR Envelope Controls</h4>
+            <div className="space-y-4">
+              {[
+                { name: '🥁 Bass Drum', color: 'red' },
+                { name: '🥁 Snare', color: 'orange' },
+                { name: '🔔 Hi-hat', color: 'yellow' },
+                { name: '🥽 Cymbal', color: 'cyan' }
+              ].map((instrument, index) => (
+                <div key={index} className="p-3 bg-gray-800 rounded border border-gray-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-medium">
+                      {instrument.name}
+                    </label>
+                    <button
+                      onClick={() => releaseInstrument(index, instrument.name.split(' ')[1] || instrument.name)}
+                      disabled={!isLoaded || !isPlaying}
+                      className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                    >
+                      Release
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Attack</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0.001"
+                          max="2"
+                          step="0.001"
+                          value={adsrValues[index].attack}
+                          onChange={(e) => handleAdsrChange(index, 'attack', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {adsrValues[index].attack.toFixed(3)}s
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Decay</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0.001"
+                          max="2"
+                          step="0.001"
+                          value={adsrValues[index].decay}
+                          onChange={(e) => handleAdsrChange(index, 'decay', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {adsrValues[index].decay.toFixed(3)}s
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Sustain</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={adsrValues[index].sustain}
+                          onChange={(e) => handleAdsrChange(index, 'sustain', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {adsrValues[index].sustain.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Release</label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="range"
+                          min="0.001"
+                          max="5"
+                          step="0.001"
+                          value={adsrValues[index].release}
+                          onChange={(e) => handleAdsrChange(index, 'release', parseFloat(e.target.value))}
+                          disabled={!isLoaded}
+                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                        />
+                        <span className="w-12 text-xs font-mono text-right">
+                          {adsrValues[index].release.toFixed(3)}s
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={releaseAll}
+              disabled={!isLoaded || !isPlaying}
+              className="w-full mt-3 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+            >
+              Release All Instruments
+            </button>
+          </div>
         </div>
       </div>
       
@@ -265,6 +432,8 @@ export default function WasmTest() {
           <li>• <strong>Individual control</strong>: Trigger each instrument separately</li>
           <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
           <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument with sliders</li>
+          <li>• <strong>ADSR envelope</strong>: Real-time Attack, Decay, Sustain, Release control per instrument</li>
+          <li>• <strong>Release control</strong>: Manually trigger release phase for individual or all instruments</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with volume applied</li>
         </ul>
       </div>
@@ -276,7 +445,15 @@ export default function WasmTest() {
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Use individual instrument buttons to test single oscillators</li>
           <li>Adjust volume sliders to control the relative volume of each instrument (0.0-1.0)</li>
-          <li>Use "Trigger All" to hear the mixed output of all instruments with volume applied</li>
+          <li>Adjust ADSR envelope controls to shape the sound of each instrument:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Attack:</strong> Time to reach full volume (0.001-2s)</li>
+            <li><strong>Decay:</strong> Time to drop to sustain level (0.001-2s)</li>
+            <li><strong>Sustain:</strong> Level held while triggered (0-1)</li>
+            <li><strong>Release:</strong> Time to fade to silence (0.001-5s)</li>
+          </ul>
+          <li>Use "Release" buttons to manually trigger the release phase</li>
+          <li>Use "Trigger All" to hear the mixed output of all instruments</li>
         </ol>
       </div>
     </div>
