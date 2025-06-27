@@ -10,6 +10,8 @@ export default function WasmTest() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
+  const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
+  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle)
   const [adsrValues, setAdsrValues] = useState([
     { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }, // Bass Drum
     { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.1 }, // Snare
@@ -163,6 +165,34 @@ export default function WasmTest() {
     });
   }
 
+  function handleFrequencyChange(index: number, frequency: number) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_frequency(index, frequency);
+    
+    // Update local state for UI
+    setFrequencies(prev => {
+      const newFrequencies = [...prev];
+      newFrequencies[index] = frequency;
+      return newFrequencies;
+    });
+  }
+
+  function handleWaveformChange(index: number, waveformType: number) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_waveform(index, waveformType);
+    
+    // Update local state for UI
+    setWaveforms(prev => {
+      const newWaveforms = [...prev];
+      newWaveforms[index] = waveformType;
+      return newWaveforms;
+    });
+  }
+
   function handleAdsrChange(index: number, param: 'attack' | 'decay' | 'sustain' | 'release', value: number) {
     if (!stageRef.current) return;
     
@@ -278,38 +308,7 @@ export default function WasmTest() {
           </div>
           
           <div className="mt-6">
-            <h4 className="font-semibold mb-3 text-center">Volume Controls</h4>
-            <div className="space-y-3">
-              {[
-                { name: '🥁 Bass Drum', color: 'red' },
-                { name: '🥁 Snare', color: 'orange' },
-                { name: '🔔 Hi-hat', color: 'yellow' },
-                { name: '🥽 Cymbal', color: 'cyan' }
-              ].map((instrument, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <label className="w-24 text-sm font-medium truncate" title={instrument.name}>
-                    {instrument.name}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volumes[index]}
-                    onChange={(e) => handleVolumeChange(index, parseFloat(e.target.value))}
-                    disabled={!isLoaded}
-                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                  />
-                  <span className="w-10 text-xs font-mono text-right">
-                    {volumes[index].toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <h4 className="font-semibold mb-3 text-center">ADSR Envelope Controls</h4>
+            <h4 className="font-semibold mb-3 text-center">Instrument Controls</h4>
             <div className="space-y-4">
               {[
                 { name: '🥁 Bass Drum', color: 'red' },
@@ -317,104 +316,160 @@ export default function WasmTest() {
                 { name: '🔔 Hi-hat', color: 'yellow' },
                 { name: '🥽 Cymbal', color: 'cyan' }
               ].map((instrument, index) => (
-                <div key={index} className="p-3 bg-gray-800 rounded border border-gray-700">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-medium">
-                      {instrument.name}
-                    </label>
-                    <button
-                      onClick={() => releaseInstrument(index, instrument.name.split(' ')[1] || instrument.name)}
-                      disabled={!isLoaded || !isPlaying}
-                      className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
-                    >
-                      Release
-                    </button>
+                <div key={index} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                  <h5 className="font-medium mb-2 text-sm">{instrument.name}</h5>
+                  
+                  {/* Volume Control */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="w-12 text-xs font-medium">Volume</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={volumes[index]}
+                      onChange={(e) => handleVolumeChange(index, parseFloat(e.target.value))}
+                      disabled={!isLoaded}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span className="w-10 text-xs font-mono text-right">
+                      {volumes[index].toFixed(2)}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Attack</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="range"
-                          min="0.001"
-                          max="2"
-                          step="0.001"
-                          value={adsrValues[index].attack}
-                          onChange={(e) => handleAdsrChange(index, 'attack', parseFloat(e.target.value))}
-                          disabled={!isLoaded}
-                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                        />
-                        <span className="w-12 text-xs font-mono text-right">
-                          {adsrValues[index].attack.toFixed(3)}s
-                        </span>
-                      </div>
+                  
+                  {/* Frequency Control */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="w-12 text-xs font-medium">Freq</label>
+                    <input
+                      type="range"
+                      min="50"
+                      max="2000"
+                      step="10"
+                      value={frequencies[index]}
+                      onChange={(e) => handleFrequencyChange(index, parseInt(e.target.value))}
+                      disabled={!isLoaded}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span className="w-16 text-xs font-mono text-right">
+                      {frequencies[index]}Hz
+                    </span>
+                  </div>
+                  
+                  {/* Waveform Control */}
+                  <div className="flex items-center space-x-2 mb-3">
+                    <label className="w-12 text-xs font-medium">Wave</label>
+                    <select
+                      value={waveforms[index]}
+                      onChange={(e) => handleWaveformChange(index, parseInt(e.target.value))}
+                      disabled={!isLoaded}
+                      className="flex-1 px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded disabled:cursor-not-allowed"
+                    >
+                      <option value={0}>Sine</option>
+                      <option value={1}>Square</option>
+                      <option value={2}>Saw</option>
+                      <option value={3}>Triangle</option>
+                    </select>
+                  </div>
+                  
+                  {/* ADSR Controls */}
+                  <div className="border-t border-gray-600 pt-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-medium text-gray-300">ADSR Envelope</label>
+                      <button
+                        onClick={() => releaseInstrument(index, instrument.name.split(' ')[1] || instrument.name)}
+                        disabled={!isLoaded || !isPlaying}
+                        className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+                      >
+                        Release
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Decay</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="range"
-                          min="0.001"
-                          max="2"
-                          step="0.001"
-                          value={adsrValues[index].decay}
-                          onChange={(e) => handleAdsrChange(index, 'decay', parseFloat(e.target.value))}
-                          disabled={!isLoaded}
-                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                        />
-                        <span className="w-12 text-xs font-mono text-right">
-                          {adsrValues[index].decay.toFixed(3)}s
-                        </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Attack</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="range"
+                            min="0.001"
+                            max="2"
+                            step="0.001"
+                            value={adsrValues[index].attack}
+                            onChange={(e) => handleAdsrChange(index, 'attack', parseFloat(e.target.value))}
+                            disabled={!isLoaded}
+                            className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span className="w-12 text-xs font-mono text-right">
+                            {adsrValues[index].attack.toFixed(3)}s
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Sustain</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={adsrValues[index].sustain}
-                          onChange={(e) => handleAdsrChange(index, 'sustain', parseFloat(e.target.value))}
-                          disabled={!isLoaded}
-                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                        />
-                        <span className="w-12 text-xs font-mono text-right">
-                          {adsrValues[index].sustain.toFixed(2)}
-                        </span>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Decay</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="range"
+                            min="0.001"
+                            max="2"
+                            step="0.001"
+                            value={adsrValues[index].decay}
+                            onChange={(e) => handleAdsrChange(index, 'decay', parseFloat(e.target.value))}
+                            disabled={!isLoaded}
+                            className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span className="w-12 text-xs font-mono text-right">
+                            {adsrValues[index].decay.toFixed(3)}s
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Release</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="range"
-                          min="0.001"
-                          max="5"
-                          step="0.001"
-                          value={adsrValues[index].release}
-                          onChange={(e) => handleAdsrChange(index, 'release', parseFloat(e.target.value))}
-                          disabled={!isLoaded}
-                          className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                        />
-                        <span className="w-12 text-xs font-mono text-right">
-                          {adsrValues[index].release.toFixed(3)}s
-                        </span>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Sustain</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={adsrValues[index].sustain}
+                            onChange={(e) => handleAdsrChange(index, 'sustain', parseFloat(e.target.value))}
+                            disabled={!isLoaded}
+                            className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span className="w-12 text-xs font-mono text-right">
+                            {adsrValues[index].sustain.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Release</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="range"
+                            min="0.001"
+                            max="5"
+                            step="0.001"
+                            value={adsrValues[index].release}
+                            onChange={(e) => handleAdsrChange(index, 'release', parseFloat(e.target.value))}
+                            disabled={!isLoaded}
+                            className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                          />
+                          <span className="w-12 text-xs font-mono text-right">
+                            {adsrValues[index].release.toFixed(3)}s
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <button
-              onClick={releaseAll}
-              disabled={!isLoaded || !isPlaying}
-              className="w-full mt-3 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
-            >
-              Release All Instruments
-            </button>
           </div>
+
+          <button
+            onClick={releaseAll}
+            disabled={!isLoaded || !isPlaying}
+            className="w-full mt-3 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+          >
+            Release All Instruments
+          </button>
         </div>
       </div>
       
@@ -428,13 +483,15 @@ export default function WasmTest() {
       <div className="mt-4 p-4 bg-blue-900/20 border border-blue-600/30 rounded">
         <h3 className="font-semibold mb-2 text-blue-300">Stage API Demo:</h3>
         <ul className="text-sm space-y-1 text-blue-100">
-          <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators at different frequencies</li>
+          <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators with independent controls</li>
           <li>• <strong>Individual control</strong>: Trigger each instrument separately</li>
           <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
-          <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument with sliders</li>
+          <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument</li>
+          <li>• <strong>Frequency control</strong>: Adjust frequency (50-2000Hz) for each instrument</li>
+          <li>• <strong>Waveform control</strong>: Select waveform type (Sine, Square, Saw, Triangle) for each instrument</li>
           <li>• <strong>ADSR envelope</strong>: Real-time Attack, Decay, Sustain, Release control per instrument</li>
           <li>• <strong>Release control</strong>: Manually trigger release phase for individual or all instruments</li>
-          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with volume applied</li>
+          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
         </ul>
       </div>
 
@@ -444,8 +501,13 @@ export default function WasmTest() {
           <li>Click "Load Stage" to initialize the WASM Stage with 4 oscillators</li>
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Use individual instrument buttons to test single oscillators</li>
-          <li>Adjust volume sliders to control the relative volume of each instrument (0.0-1.0)</li>
-          <li>Adjust ADSR envelope controls to shape the sound of each instrument:</li>
+          <li>Adjust instrument controls for each oscillator:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Volume:</strong> Control relative volume of each instrument (0.0-1.0)</li>
+            <li><strong>Frequency:</strong> Change the pitch of each instrument (50-2000Hz)</li>
+            <li><strong>Waveform:</strong> Select tone quality (Sine, Square, Saw, Triangle)</li>
+          </ul>
+          <li>Adjust ADSR envelope controls to shape the sound envelope:</li>
           <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
             <li><strong>Attack:</strong> Time to reach full volume (0.001-2s)</li>
             <li><strong>Decay:</strong> Time to drop to sustain level (0.001-2s)</li>
@@ -453,7 +515,8 @@ export default function WasmTest() {
             <li><strong>Release:</strong> Time to fade to silence (0.001-5s)</li>
           </ul>
           <li>Use "Release" buttons to manually trigger the release phase</li>
-          <li>Use "Trigger All" to hear the mixed output of all instruments</li>
+          <li>Use "Release All" to release all instruments simultaneously</li>
+          <li>Use "Trigger All" to hear the mixed output of all instruments with all controls applied</li>
         </ol>
       </div>
     </div>
