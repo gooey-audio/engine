@@ -10,6 +10,14 @@ use cpal::{FromSample, Sample};
 use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
 
+mod envelope;
+mod oscillator;
+mod waveform;
+
+use envelope::Envelope;
+use oscillator::Oscillator;
+use waveform::Waveform;
+
 // Shared state for communication between main thread and audio callback
 pub struct AudioState {
     pub should_trigger: bool,
@@ -67,148 +75,6 @@ fn main() {
     println!("This binary is only available with the 'native' feature enabled.");
 }
 
-pub enum Waveform {
-    Sine,
-    Square,
-    Saw,
-    Triangle,
-}
-
-pub struct Envelope {
-    pub attack_time: f32,   // seconds
-    pub decay_time: f32,    // seconds
-    pub sustain_level: f32, // 0.0 to 1.0
-    pub release_time: f32,  // seconds
-    pub current_time: f32,  // current time in the envelope
-    pub is_active: bool,
-    pub trigger_time: f32,  // when the envelope was triggered
-}
-
-impl Envelope {
-    fn new() -> Self {
-        Self {
-            attack_time: 0.01,   // 10ms attack
-            decay_time: 0.3,     // 300ms decay (was 100ms)
-            sustain_level: 0.0,  // no sustain for drum
-            release_time: 0.5,   // 500ms release (was 200ms)
-            current_time: 0.0,
-            is_active: false,
-            trigger_time: 0.0,
-        }
-    }
-
-    fn trigger(&mut self, time: f32) {
-        self.is_active = true;
-        self.trigger_time = time;
-        self.current_time = 0.0;
-    }
-
-    fn get_amplitude(&mut self, current_time: f32) -> f32 {
-        if !self.is_active {
-            return 0.0;
-        }
-
-        let elapsed = current_time - self.trigger_time;
-        self.current_time = elapsed;
-
-        if elapsed < self.attack_time {
-            // Attack phase
-            elapsed / self.attack_time
-        } else if elapsed < self.attack_time + self.decay_time {
-            // Decay phase
-            let decay_elapsed = elapsed - self.attack_time;
-            let decay_progress = decay_elapsed / self.decay_time;
-            1.0 - (1.0 - self.sustain_level) * decay_progress
-        } else if elapsed < self.attack_time + self.decay_time + self.release_time {
-            // Release phase
-            let release_elapsed = elapsed - self.attack_time - self.decay_time;
-            let release_progress = release_elapsed / self.release_time;
-            self.sustain_level * (1.0 - release_progress)
-        } else {
-            // Envelope finished
-            self.is_active = false;
-            0.0
-        }
-    }
-}
-
-pub struct Oscillator {
-    pub sample_rate: f32,
-    pub waveform: Waveform,
-    pub current_sample_index: f32,
-    pub frequency_hz: f32,
-    pub envelope: Envelope,
-}
-
-impl Oscillator {
-    fn new(sample_rate: f32, frequency_hz: f32) -> Self {
-        Self {
-            sample_rate,
-            waveform: Waveform::Square,
-            current_sample_index: 0.0,
-            frequency_hz,
-            envelope: Envelope::new(),
-        }
-    }
-
-    fn advance_sample(&mut self) {
-        self.current_sample_index = (self.current_sample_index + 1.0) % self.sample_rate;
-    }
-
-    fn calculate_sine_output_from_freq(&self, freq: f32) -> f32 {
-        let two_pi = 2.0 * std::f32::consts::PI;
-        (self.current_sample_index * freq * two_pi / self.sample_rate).sin()
-    }
-
-    fn is_multiple_of_freq_above_nyquist(&self, multiple: f32) -> bool {
-        self.frequency_hz * multiple > self.sample_rate / 2.0
-    }
-
-    fn sine_wave(&mut self) -> f32 {
-        self.advance_sample();
-        self.calculate_sine_output_from_freq(self.frequency_hz)
-    }
-
-    fn generative_waveform(&mut self, harmonic_index_increment: i32, gain_exponent: f32) -> f32 {
-        self.advance_sample();
-        let mut output = 0.0;
-        let mut i = 1;
-        while !self.is_multiple_of_freq_above_nyquist(i as f32) {
-            let gain = 1.0 / (i as f32).powf(gain_exponent);
-            output += gain * self.calculate_sine_output_from_freq(self.frequency_hz * i as f32);
-            i += harmonic_index_increment;
-        }
-        output
-    }
-
-    fn square_wave(&mut self) -> f32 {
-        self.generative_waveform(2, 1.0)
-    }
-
-    fn saw_wave(&mut self) -> f32 {
-        self.generative_waveform(1, 1.0)
-    }
-
-    fn triangle_wave(&mut self) -> f32 {
-        self.generative_waveform(2, 2.0)
-    }
-
-    fn trigger(&mut self, time: f32) {
-        self.envelope.trigger(time);
-    }
-
-    fn tick(&mut self, current_time: f32) -> f32 {
-        let raw_output = match self.waveform {
-            Waveform::Sine => self.sine_wave(),
-            Waveform::Square => self.square_wave(),
-            Waveform::Saw => self.saw_wave(),
-            Waveform::Triangle => self.triangle_wave(),
-        };
-        
-        let envelope_amplitude = self.envelope.get_amplitude(current_time);
-        raw_output * envelope_amplitude
-    }
-}
 
 pub fn stream_setup_for(audio_state: Arc<Mutex<AudioState>>) -> Result<cpal::Stream, anyhow::Error>
 where
