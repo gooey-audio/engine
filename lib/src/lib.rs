@@ -110,5 +110,38 @@ pub mod web {
             let config = ADSRConfig::new(attack, decay, sustain, release);
             self.stage.set_instrument_adsr(index, config);
         }
+
+        #[wasm_bindgen]
+        pub fn set_instrument_frequency(&mut self, index: usize, frequency_hz: f32) {
+            self.stage.set_instrument_frequency(index, frequency_hz);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_instrument_frequency(&self, index: usize) -> f32 {
+            self.stage.get_instrument_frequency(index)
+        }
+
+        #[wasm_bindgen]
+        pub fn set_instrument_waveform(&mut self, index: usize, waveform_type: u32) {
+            let waveform = match waveform_type {
+                0 => crate::waveform::Waveform::Sine,
+                1 => crate::waveform::Waveform::Square,
+                2 => crate::waveform::Waveform::Saw,
+                3 => crate::waveform::Waveform::Triangle,
+                _ => crate::waveform::Waveform::Sine, // Default to sine for invalid values
+            };
+            self.stage.set_instrument_waveform(index, waveform);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_instrument_waveform(&self, index: usize) -> u32 {
+            let waveform = self.stage.get_instrument_waveform(index);
+            match waveform {
+                crate::waveform::Waveform::Sine => 0,
+                crate::waveform::Waveform::Square => 1,
+                crate::waveform::Waveform::Saw => 2,
+                crate::waveform::Waveform::Triangle => 3,
+            }
+        }
     }
 } 

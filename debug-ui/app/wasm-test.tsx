@@ -203,7 +203,9 @@ export default function WasmTest() {
       
       // Update the WASM stage with new ADSR values
       const adsr = newAdsrValues[index];
-      stageRef.current.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
+      if (stageRef.current) {
+        stageRef.current.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
+      }
       
       return newAdsrValues;
     });

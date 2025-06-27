@@ -1,5 +1,5 @@
-use crate::oscillator::Oscillator;
 use crate::envelope::ADSRConfig;
+use crate::oscillator::Oscillator;
 
 pub struct Stage {
     pub sample_rate: f32,
@@ -72,6 +72,34 @@ impl Stage {
     pub fn set_instrument_adsr(&mut self, index: usize, config: ADSRConfig) {
         if let Some(instrument) = self.instruments.get_mut(index) {
             instrument.set_adsr(config);
+        }
+    }
+
+    pub fn set_instrument_frequency(&mut self, index: usize, frequency_hz: f32) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.frequency_hz = frequency_hz;
+        }
+    }
+
+    pub fn get_instrument_frequency(&self, index: usize) -> f32 {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.frequency_hz
+        } else {
+            0.0
+        }
+    }
+
+    pub fn set_instrument_waveform(&mut self, index: usize, waveform: crate::waveform::Waveform) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.waveform = waveform;
+        }
+    }
+
+    pub fn get_instrument_waveform(&self, index: usize) -> crate::waveform::Waveform {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.waveform
+        } else {
+            crate::waveform::Waveform::Sine
         }
     }
 
