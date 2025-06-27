@@ -72,5 +72,15 @@ pub mod web {
         pub fn trigger_instrument(&mut self, index: usize, time: f32) {
             self.stage.trigger_instrument(index, time);
         }
+
+        #[wasm_bindgen]
+        pub fn set_instrument_volume(&mut self, index: usize, volume: f32) {
+            self.stage.set_instrument_volume(index, volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_instrument_volume(&self, index: usize) -> f32 {
+            self.stage.get_instrument_volume(index)
+        }
     }
 } 

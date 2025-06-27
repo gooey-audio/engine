@@ -38,4 +38,18 @@ impl Stage {
             instrument.trigger(time);
         }
     }
+    
+    pub fn set_instrument_volume(&mut self, index: usize, volume: f32) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.set_volume(volume);
+        }
+    }
+    
+    pub fn get_instrument_volume(&self, index: usize) -> f32 {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.volume
+        } else {
+            0.0
+        }
+    }
 }

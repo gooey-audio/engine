@@ -9,6 +9,7 @@ export default function WasmTest() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
 
   async function loadWasm() {
     setIsLoading(true);
@@ -137,6 +138,20 @@ export default function WasmTest() {
     }
   }
 
+  function handleVolumeChange(index: number, volume: number) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_volume(index, volume);
+    
+    // Update local state for UI
+    setVolumes(prev => {
+      const newVolumes = [...prev];
+      newVolumes[index] = volume;
+      return newVolumes;
+    });
+  }
+
   return (
     <div className="p-8 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">WASM Stage API Test</h1>
@@ -202,6 +217,37 @@ export default function WasmTest() {
               🥽 Cymbal (600Hz)
             </button>
           </div>
+          
+          <div className="mt-6">
+            <h4 className="font-semibold mb-3 text-center">Volume Controls</h4>
+            <div className="space-y-3">
+              {[
+                { name: '🥁 Bass Drum', color: 'red' },
+                { name: '🥁 Snare', color: 'orange' },
+                { name: '🔔 Hi-hat', color: 'yellow' },
+                { name: '🥽 Cymbal', color: 'cyan' }
+              ].map((instrument, index) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <label className="w-24 text-sm font-medium truncate" title={instrument.name}>
+                    {instrument.name}
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volumes[index]}
+                    onChange={(e) => handleVolumeChange(index, parseFloat(e.target.value))}
+                    disabled={!isLoaded}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <span className="w-10 text-xs font-mono text-right">
+                    {volumes[index].toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -218,7 +264,8 @@ export default function WasmTest() {
           <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators at different frequencies</li>
           <li>• <strong>Individual control</strong>: Trigger each instrument separately</li>
           <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
-          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs</li>
+          <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument with sliders</li>
+          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with volume applied</li>
         </ul>
       </div>
 
@@ -228,7 +275,8 @@ export default function WasmTest() {
           <li>Click "Load Stage" to initialize the WASM Stage with 4 oscillators</li>
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Use individual instrument buttons to test single oscillators</li>
-          <li>Use "Trigger All" to hear the mixed output of all instruments</li>
+          <li>Adjust volume sliders to control the relative volume of each instrument (0.0-1.0)</li>
+          <li>Use "Trigger All" to hear the mixed output of all instruments with volume applied</li>
         </ol>
       </div>
     </div>
