@@ -56,6 +56,34 @@ impl Stage {
         }
     }
 
+    pub fn set_instrument_frequency(&mut self, index: usize, frequency_hz: f32) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.frequency_hz = frequency_hz;
+        }
+    }
+
+    pub fn get_instrument_frequency(&self, index: usize) -> f32 {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.frequency_hz
+        } else {
+            0.0
+        }
+    }
+
+    pub fn set_instrument_waveform(&mut self, index: usize, waveform: crate::waveform::Waveform) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.waveform = waveform;
+        }
+    }
+
+    pub fn get_instrument_waveform(&self, index: usize) -> crate::waveform::Waveform {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.waveform
+        } else {
+            crate::waveform::Waveform::Sine
+        }
+    }
+
     /// Set the limiter threshold (typically 0.0 to 1.0)
     pub fn set_limiter_threshold(&mut self, threshold: f32) {
         self.limiter.threshold = threshold;

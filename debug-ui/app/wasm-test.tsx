@@ -10,6 +10,8 @@ export default function WasmTest() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
+  const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
+  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle)
 
   async function loadWasm() {
     setIsLoading(true);
@@ -152,6 +154,34 @@ export default function WasmTest() {
     });
   }
 
+  function handleFrequencyChange(index: number, frequency: number) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_frequency(index, frequency);
+    
+    // Update local state for UI
+    setFrequencies(prev => {
+      const newFrequencies = [...prev];
+      newFrequencies[index] = frequency;
+      return newFrequencies;
+    });
+  }
+
+  function handleWaveformChange(index: number, waveformType: number) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_waveform(index, waveformType);
+    
+    // Update local state for UI
+    setWaveforms(prev => {
+      const newWaveforms = [...prev];
+      newWaveforms[index] = waveformType;
+      return newWaveforms;
+    });
+  }
+
   return (
     <div className="p-8 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">WASM Stage API Test</h1>
@@ -219,31 +249,68 @@ export default function WasmTest() {
           </div>
           
           <div className="mt-6">
-            <h4 className="font-semibold mb-3 text-center">Volume Controls</h4>
-            <div className="space-y-3">
+            <h4 className="font-semibold mb-3 text-center">Instrument Controls</h4>
+            <div className="space-y-4">
               {[
                 { name: '🥁 Bass Drum', color: 'red' },
                 { name: '🥁 Snare', color: 'orange' },
                 { name: '🔔 Hi-hat', color: 'yellow' },
                 { name: '🥽 Cymbal', color: 'cyan' }
               ].map((instrument, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <label className="w-24 text-sm font-medium truncate" title={instrument.name}>
-                    {instrument.name}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={volumes[index]}
-                    onChange={(e) => handleVolumeChange(index, parseFloat(e.target.value))}
-                    disabled={!isLoaded}
-                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                  />
-                  <span className="w-10 text-xs font-mono text-right">
-                    {volumes[index].toFixed(2)}
-                  </span>
+                <div key={index} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                  <h5 className="font-medium mb-2 text-sm">{instrument.name}</h5>
+                  
+                  {/* Volume Control */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="w-12 text-xs font-medium">Volume</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={volumes[index]}
+                      onChange={(e) => handleVolumeChange(index, parseFloat(e.target.value))}
+                      disabled={!isLoaded}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span className="w-10 text-xs font-mono text-right">
+                      {volumes[index].toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  {/* Frequency Control */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="w-12 text-xs font-medium">Freq</label>
+                    <input
+                      type="range"
+                      min="50"
+                      max="2000"
+                      step="10"
+                      value={frequencies[index]}
+                      onChange={(e) => handleFrequencyChange(index, parseInt(e.target.value))}
+                      disabled={!isLoaded}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span className="w-16 text-xs font-mono text-right">
+                      {frequencies[index]}Hz
+                    </span>
+                  </div>
+                  
+                  {/* Waveform Control */}
+                  <div className="flex items-center space-x-2">
+                    <label className="w-12 text-xs font-medium">Wave</label>
+                    <select
+                      value={waveforms[index]}
+                      onChange={(e) => handleWaveformChange(index, parseInt(e.target.value))}
+                      disabled={!isLoaded}
+                      className="flex-1 px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded disabled:cursor-not-allowed"
+                    >
+                      <option value={0}>Sine</option>
+                      <option value={1}>Square</option>
+                      <option value={2}>Saw</option>
+                      <option value={3}>Triangle</option>
+                    </select>
+                  </div>
                 </div>
               ))}
             </div>
@@ -261,11 +328,13 @@ export default function WasmTest() {
       <div className="mt-4 p-4 bg-blue-900/20 border border-blue-600/30 rounded">
         <h3 className="font-semibold mb-2 text-blue-300">Stage API Demo:</h3>
         <ul className="text-sm space-y-1 text-blue-100">
-          <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators at different frequencies</li>
+          <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators with independent controls</li>
           <li>• <strong>Individual control</strong>: Trigger each instrument separately</li>
           <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
-          <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument with sliders</li>
-          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with volume applied</li>
+          <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument</li>
+          <li>• <strong>Frequency control</strong>: Adjust frequency (50-2000Hz) for each instrument</li>
+          <li>• <strong>Waveform control</strong>: Select waveform type (Sine, Square, Saw, Triangle) for each instrument</li>
+          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
         </ul>
       </div>
 
@@ -276,7 +345,9 @@ export default function WasmTest() {
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Use individual instrument buttons to test single oscillators</li>
           <li>Adjust volume sliders to control the relative volume of each instrument (0.0-1.0)</li>
-          <li>Use "Trigger All" to hear the mixed output of all instruments with volume applied</li>
+          <li>Adjust frequency sliders to change the pitch of each instrument (50-2000Hz)</li>
+          <li>Select waveform types to change the tone quality (Sine, Square, Saw, Triangle)</li>
+          <li>Use "Trigger All" to hear the mixed output of all instruments with controls applied</li>
         </ol>
       </div>
     </div>
