@@ -48,6 +48,16 @@ pub mod web {
             let config = ADSRConfig::new(attack, decay, sustain, release);
             self.oscillator.set_adsr(config);
         }
+
+        #[wasm_bindgen]
+        pub fn set_modulator_frequency(&mut self, frequency_hz: f32) {
+            self.oscillator.set_modulator_frequency(frequency_hz);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_modulator_frequency(&self) -> f32 {
+            self.oscillator.get_modulator_frequency()
+        }
     }
 
     #[wasm_bindgen]
@@ -128,6 +138,7 @@ pub mod web {
                 1 => crate::waveform::Waveform::Square,
                 2 => crate::waveform::Waveform::Saw,
                 3 => crate::waveform::Waveform::Triangle,
+                4 => crate::waveform::Waveform::RingMod,
                 _ => crate::waveform::Waveform::Sine, // Default to sine for invalid values
             };
             self.stage.set_instrument_waveform(index, waveform);
@@ -141,7 +152,18 @@ pub mod web {
                 crate::waveform::Waveform::Square => 1,
                 crate::waveform::Waveform::Saw => 2,
                 crate::waveform::Waveform::Triangle => 3,
+                crate::waveform::Waveform::RingMod => 4,
             }
+        }
+
+        #[wasm_bindgen]
+        pub fn set_instrument_modulator_frequency(&mut self, index: usize, frequency_hz: f32) {
+            self.stage.set_instrument_modulator_frequency(index, frequency_hz);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_instrument_modulator_frequency(&self, index: usize) -> f32 {
+            self.stage.get_instrument_modulator_frequency(index)
         }
     }
 } 

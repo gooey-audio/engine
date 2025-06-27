@@ -103,6 +103,20 @@ impl Stage {
         }
     }
 
+    pub fn set_instrument_modulator_frequency(&mut self, index: usize, frequency_hz: f32) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.set_modulator_frequency(frequency_hz);
+        }
+    }
+
+    pub fn get_instrument_modulator_frequency(&self, index: usize) -> f32 {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.get_modulator_frequency()
+        } else {
+            0.0
+        }
+    }
+
     /// Set the limiter threshold (typically 0.0 to 1.0)
     pub fn set_limiter_threshold(&mut self, threshold: f32) {
         self.limiter.threshold = threshold;
