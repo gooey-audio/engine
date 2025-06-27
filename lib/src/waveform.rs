@@ -4,4 +4,8 @@ pub enum Waveform {
     Square,
     Saw,
     Triangle,
+    WhiteNoise,
+    PinkNoise,
+    BrownNoise,
+    SnareNoise,
 } 

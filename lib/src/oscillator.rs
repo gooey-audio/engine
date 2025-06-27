@@ -1,5 +1,6 @@
 use crate::envelope::{Envelope, ADSRConfig};
 use crate::waveform::Waveform;
+use crate::noise::{NoiseGenerator, NoiseType};
 
 pub struct Oscillator {
     pub sample_rate: f32,
@@ -8,6 +9,7 @@ pub struct Oscillator {
     pub frequency_hz: f32,
     pub envelope: Envelope,
     pub volume: f32,
+    pub noise_generator: NoiseGenerator,
 }
 
 impl Oscillator {
@@ -19,6 +21,7 @@ impl Oscillator {
             frequency_hz,
             envelope: Envelope::new(),
             volume: 1.0,
+            noise_generator: NoiseGenerator::new(sample_rate),
         }
     }
 
@@ -64,6 +67,22 @@ impl Oscillator {
         self.generative_waveform(2, 2.0)
     }
 
+    fn white_noise(&mut self) -> f32 {
+        self.noise_generator.white_noise()
+    }
+
+    fn pink_noise(&mut self) -> f32 {
+        self.noise_generator.pink_noise()
+    }
+
+    fn brown_noise(&mut self) -> f32 {
+        self.noise_generator.brown_noise()
+    }
+
+    fn snare_noise(&mut self) -> f32 {
+        self.noise_generator.snare_noise()
+    }
+
     pub fn trigger(&mut self, time: f32) {
         self.envelope.trigger(time);
     }
@@ -86,6 +105,10 @@ impl Oscillator {
             Waveform::Square => self.square_wave(),
             Waveform::Saw => self.saw_wave(),
             Waveform::Triangle => self.triangle_wave(),
+            Waveform::WhiteNoise => self.white_noise(),
+            Waveform::PinkNoise => self.pink_noise(),
+            Waveform::BrownNoise => self.brown_noise(),
+            Waveform::SnareNoise => self.snare_noise(),
         };
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume

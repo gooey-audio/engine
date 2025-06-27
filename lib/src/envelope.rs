@@ -17,7 +17,12 @@ impl ADSRConfig {
     }
 
     pub fn default() -> Self {
-        Self::new(0.01, 0.3, 0.7, 0.5)
+        Self::new(0.01, 0.3, 0.1, 0.5) // Reduced sustain from 0.7 to 0.1 for drum-like behavior
+    }
+    
+    /// Default ADSR configuration suitable for drum instruments
+    pub fn drum_default() -> Self {  
+        Self::new(0.001, 0.05, 0.1, 0.2) // Fast attack, quick decay, low sustain, quick release
     }
 }
 
