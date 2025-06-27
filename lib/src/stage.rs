@@ -22,13 +22,13 @@ impl BrickWallLimiter {
     }
 }
 
-/// Represents a stage in the audio processing pipeline
-pub struct Stage {
+/// Represents a processing stage in the audio pipeline with oscillator and limiter
+pub struct ProcessingStage {
     pub oscillator: Oscillator,
     pub limiter: BrickWallLimiter,
 }
 
-impl Stage {
+impl ProcessingStage {
     pub fn new(sample_rate: f32, frequency_hz: f32) -> Self {
         Self {
             oscillator: Oscillator::new(sample_rate, frequency_hz),

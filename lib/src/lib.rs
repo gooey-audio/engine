@@ -10,7 +10,7 @@ pub mod stage;
 #[cfg(feature = "web")]
 pub mod web {
     use super::oscillator::Oscillator;
-    use super::stage::Stage;
+    use super::stage::ProcessingStage;
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -39,16 +39,16 @@ pub mod web {
     }
 
     #[wasm_bindgen]
-    pub struct WasmStage {
-        stage: Stage,
+    pub struct WasmProcessingStage {
+        stage: ProcessingStage,
     }
 
     #[wasm_bindgen]
-    impl WasmStage {
+    impl WasmProcessingStage {
         #[wasm_bindgen(constructor)]
-        pub fn new(sample_rate: f32, frequency_hz: f32) -> WasmStage {
-            WasmStage {
-                stage: Stage::new(sample_rate, frequency_hz),
+        pub fn new(sample_rate: f32, frequency_hz: f32) -> WasmProcessingStage {
+            WasmProcessingStage {
+                stage: ProcessingStage::new(sample_rate, frequency_hz),
             }
         }
 

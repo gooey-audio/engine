@@ -10,8 +10,8 @@ use cpal::{FromSample, Sample};
 use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
 
-// Import the Stage and other components from our audio engine modules
-use crate::stage::Stage;
+// Import the ProcessingStage and other components from our audio engine modules
+use crate::stage::ProcessingStage;
 use crate::oscillator::Oscillator;
 use crate::envelope::Envelope;
 use crate::waveform::Waveform;
@@ -120,7 +120,7 @@ where
     T: SizedSample + FromSample<f32>,
 {
     let num_channels = config.channels as usize;
-    let mut stage = Stage::new(
+    let mut stage = ProcessingStage::new(
         config.sample_rate.0 as f32,
         300.0, // Lower frequency for drum-like sound
     );
@@ -158,7 +158,7 @@ where
 
 fn process_frame<SampleType>(
     output: &mut [SampleType],
-    stage: &mut Stage,
+    stage: &mut ProcessingStage,
     num_channels: usize,
     current_time: f32,
 ) where
