@@ -11,7 +11,8 @@ export default function WasmTest() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
-  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle)
+  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle, 4=RingMod)
+  const [modulatorFrequencies, setModulatorFrequencies] = useState([100, 150, 220, 300]); // Modulator frequency for each instrument (for ring modulation)
   const [adsrValues, setAdsrValues] = useState([
     { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }, // Bass Drum
     { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.1 }, // Snare
@@ -37,6 +38,11 @@ export default function WasmTest() {
       // Initialize ADSR settings for each instrument
       adsrValues.forEach((adsr, index) => {
         stageRef.current?.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
+      });
+      
+      // Initialize modulator frequencies for each instrument
+      modulatorFrequencies.forEach((freq, index) => {
+        stageRef.current?.set_instrument_modulator_frequency(index, freq);
       });
       
       // Initialize Web Audio API
@@ -211,6 +217,20 @@ export default function WasmTest() {
     });
   }
 
+  function handleModulatorFrequencyChange(index: number, frequency: number) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_modulator_frequency(index, frequency);
+    
+    // Update local state for UI
+    setModulatorFrequencies(prev => {
+      const newModulatorFrequencies = [...prev];
+      newModulatorFrequencies[index] = frequency;
+      return newModulatorFrequencies;
+    });
+  }
+
   function releaseInstrument(index: number, name: string) {
     if (!audioContextRef.current || !stageRef.current) {
       alert('Audio not started yet. Click "Start Audio" first.');
@@ -370,8 +390,29 @@ export default function WasmTest() {
                       <option value={1}>Square</option>
                       <option value={2}>Saw</option>
                       <option value={3}>Triangle</option>
+                      <option value={4}>Ring Mod</option>
                     </select>
                   </div>
+                  
+                  {/* Modulator Frequency Control (only for Ring Mod) */}
+                  {waveforms[index] === 4 && (
+                    <div className="flex items-center space-x-2 mb-3">
+                      <label className="w-12 text-xs font-medium">Mod</label>
+                      <input
+                        type="range"
+                        min="50"
+                        max="2000"
+                        step="10"
+                        value={modulatorFrequencies[index]}
+                        onChange={(e) => handleModulatorFrequencyChange(index, parseInt(e.target.value))}
+                        disabled={!isLoaded}
+                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <span className="w-16 text-xs font-mono text-right">
+                        {modulatorFrequencies[index]}Hz
+                      </span>
+                    </div>
+                  )}
                   
                   {/* ADSR Controls */}
                   <div className="border-t border-gray-600 pt-2">
@@ -490,7 +531,8 @@ export default function WasmTest() {
           <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
           <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument</li>
           <li>• <strong>Frequency control</strong>: Adjust frequency (50-2000Hz) for each instrument</li>
-          <li>• <strong>Waveform control</strong>: Select waveform type (Sine, Square, Saw, Triangle) for each instrument</li>
+          <li>• <strong>Waveform control</strong>: Select waveform type (Sine, Square, Saw, Triangle, Ring Mod) for each instrument</li>
+          <li>• <strong>Ring modulation</strong>: Modulator frequency control for Ring Mod waveform</li>
           <li>• <strong>ADSR envelope</strong>: Real-time Attack, Decay, Sustain, Release control per instrument</li>
           <li>• <strong>Release control</strong>: Manually trigger release phase for individual or all instruments</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
@@ -507,7 +549,8 @@ export default function WasmTest() {
           <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
             <li><strong>Volume:</strong> Control relative volume of each instrument (0.0-1.0)</li>
             <li><strong>Frequency:</strong> Change the pitch of each instrument (50-2000Hz)</li>
-            <li><strong>Waveform:</strong> Select tone quality (Sine, Square, Saw, Triangle)</li>
+            <li><strong>Waveform:</strong> Select tone quality (Sine, Square, Saw, Triangle, Ring Mod)</li>
+            <li><strong>Modulator:</strong> Control modulator frequency for Ring Mod waveform (50-2000Hz)</li>
           </ul>
           <li>Adjust ADSR envelope controls to shape the sound envelope:</li>
           <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
