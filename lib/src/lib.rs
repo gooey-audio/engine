@@ -1,17 +1,17 @@
 //! Shared audio engine logic for both native (CPAL) and WASM (web)
 
-pub mod oscillator;
-pub mod envelope;
-pub mod waveform;
 pub mod audio_state;
+pub mod envelope;
+pub mod oscillator;
 pub mod stage;
+pub mod waveform;
 
 // WASM bindings (web)
 #[cfg(feature = "web")]
 pub mod web {
+    use super::envelope::ADSRConfig;
     use super::oscillator::Oscillator;
     use super::stage::Stage;
-    use super::envelope::ADSRConfig;
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -116,7 +116,14 @@ pub mod web {
         }
 
         #[wasm_bindgen]
-        pub fn set_instrument_adsr(&mut self, index: usize, attack: f32, decay: f32, sustain: f32, release: f32) {
+        pub fn set_instrument_adsr(
+            &mut self,
+            index: usize,
+            attack: f32,
+            decay: f32,
+            sustain: f32,
+            release: f32,
+        ) {
             let config = ADSRConfig::new(attack, decay, sustain, release);
             self.stage.set_instrument_adsr(index, config);
         }
@@ -158,12 +165,23 @@ pub mod web {
 
         #[wasm_bindgen]
         pub fn set_instrument_modulator_frequency(&mut self, index: usize, frequency_hz: f32) {
-            self.stage.set_instrument_modulator_frequency(index, frequency_hz);
+            self.stage
+                .set_instrument_modulator_frequency(index, frequency_hz);
         }
 
         #[wasm_bindgen]
         pub fn get_instrument_modulator_frequency(&self, index: usize) -> f32 {
             self.stage.get_instrument_modulator_frequency(index)
         }
+
+        #[wasm_bindgen]
+        pub fn set_instrument_enabled(&mut self, index: usize, enabled: bool) {
+            self.stage.set_instrument_enabled(index, enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_instrument_enabled(&self, index: usize) -> bool {
+            self.stage.is_instrument_enabled(index)
+        }
     }
-} 
+}

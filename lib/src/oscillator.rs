@@ -1,4 +1,4 @@
-use crate::envelope::{Envelope, ADSRConfig};
+use crate::envelope::{ADSRConfig, Envelope};
 use crate::waveform::Waveform;
 
 pub struct Oscillator {
@@ -9,6 +9,7 @@ pub struct Oscillator {
     pub envelope: Envelope,
     pub volume: f32,
     pub modulator_frequency_hz: f32,
+    pub enabled: bool,
 }
 
 impl Oscillator {
@@ -21,6 +22,7 @@ impl Oscillator {
             envelope: Envelope::new(),
             volume: 1.0,
             modulator_frequency_hz: frequency_hz * 0.5, // Default modulator at half carrier frequency
+            enabled: true,
         }
     }
 
@@ -97,7 +99,18 @@ impl Oscillator {
         self.modulator_frequency_hz
     }
 
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        if !self.enabled {
+            return 0.0;
+        }
         let raw_output = match self.waveform {
             Waveform::Sine => self.sine_wave(),
             Waveform::Square => self.square_wave(),

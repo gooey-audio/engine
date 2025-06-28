@@ -117,6 +117,20 @@ impl Stage {
         }
     }
 
+    pub fn set_instrument_enabled(&mut self, index: usize, enabled: bool) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.set_enabled(enabled);
+        }
+    }
+
+    pub fn is_instrument_enabled(&self, index: usize) -> bool {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.is_enabled()
+        } else {
+            false
+        }
+    }
+
     /// Set the limiter threshold (typically 0.0 to 1.0)
     pub fn set_limiter_threshold(&mut self, threshold: f32) {
         self.limiter.threshold = threshold;

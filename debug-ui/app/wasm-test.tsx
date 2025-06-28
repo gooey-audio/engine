@@ -11,8 +11,9 @@ export default function WasmTest() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
-  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle, 4=RingMod)
   const [modulatorFrequencies, setModulatorFrequencies] = useState([100, 150, 220, 300]); // Modulator frequency for each instrument (for ring modulation)
+  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle)
+  const [enabled, setEnabled] = useState([true, true, true, true]); // Enabled state for each instrument
   const [adsrValues, setAdsrValues] = useState([
     { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }, // Bass Drum
     { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.1 }, // Snare
@@ -231,6 +232,20 @@ export default function WasmTest() {
     });
   }
 
+  function handleEnabledChange(index: number, isEnabled: boolean) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_enabled(index, isEnabled);
+    
+    // Update local state for UI
+    setEnabled(prev => {
+      const newEnabled = [...prev];
+      newEnabled[index] = isEnabled;
+      return newEnabled;
+    });
+  }
+
   function releaseInstrument(index: number, name: string) {
     if (!audioContextRef.current || !stageRef.current) {
       alert('Audio not started yet. Click "Start Audio" first.');
@@ -339,7 +354,20 @@ export default function WasmTest() {
                 { name: '🥽 Cymbal', color: 'cyan' }
               ].map((instrument, index) => (
                 <div key={index} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                  <h5 className="font-medium mb-2 text-sm">{instrument.name}</h5>
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-medium text-sm">{instrument.name}</h5>
+                    <button
+                      onClick={() => handleEnabledChange(index, !enabled[index])}
+                      disabled={!isLoaded}
+                      className={`px-3 py-1 text-xs font-medium rounded transition-colors disabled:cursor-not-allowed ${
+                        enabled[index]
+                          ? 'bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-600'
+                          : 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-600'
+                      }`}
+                    >
+                      {enabled[index] ? '🔊 ON' : '🔇 OFF'}
+                    </button>
+                  </div>
                   
                   {/* Volume Control */}
                   <div className="flex items-center space-x-2 mb-2">
@@ -529,6 +557,7 @@ export default function WasmTest() {
           <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators with independent controls</li>
           <li>• <strong>Individual control</strong>: Trigger each instrument separately</li>
           <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
+          <li>• <strong>Enable/disable</strong>: Toggle instruments on/off to mute/unmute individual instruments</li>
           <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument</li>
           <li>• <strong>Frequency control</strong>: Adjust frequency (50-2000Hz) for each instrument</li>
           <li>• <strong>Waveform control</strong>: Select waveform type (Sine, Square, Saw, Triangle, Ring Mod) for each instrument</li>
@@ -547,6 +576,7 @@ export default function WasmTest() {
           <li>Use individual instrument buttons to test single oscillators</li>
           <li>Adjust instrument controls for each oscillator:</li>
           <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Enable/Disable:</strong> Click ON/OFF button to mute/unmute individual instruments</li>
             <li><strong>Volume:</strong> Control relative volume of each instrument (0.0-1.0)</li>
             <li><strong>Frequency:</strong> Change the pitch of each instrument (50-2000Hz)</li>
             <li><strong>Waveform:</strong> Select tone quality (Sine, Square, Saw, Triangle, Ring Mod)</li>
