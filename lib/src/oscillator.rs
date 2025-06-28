@@ -1,5 +1,6 @@
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::waveform::Waveform;
+use crate::instrument::Instrument;
 
 pub struct Oscillator {
     pub sample_rate: f32,
@@ -120,5 +121,31 @@ impl Oscillator {
         };
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume
+    }
+}
+
+impl Instrument for Oscillator {
+    fn trigger(&mut self, time: f32) {
+        self.trigger(time);
+    }
+    
+    fn release(&mut self, time: f32) {
+        self.release(time);
+    }
+    
+    fn tick(&mut self, current_time: f32) -> f32 {
+        self.tick(current_time)
+    }
+    
+    fn set_volume(&mut self, volume: f32) {
+        self.set_volume(volume);
+    }
+    
+    fn get_volume(&self) -> f32 {
+        self.volume
+    }
+    
+    fn set_adsr(&mut self, config: ADSRConfig) {
+        self.set_adsr(config);
     }
 }
