@@ -12,7 +12,6 @@ pub mod waveform;
 #[cfg(feature = "web")]
 pub mod web {
     use super::envelope::ADSRConfig;
-    use super::envelope::ADSRConfig;
     use super::fm_oscillator::FMOscillator;
     use super::oscillator::Oscillator;
     use super::stage::Stage;
