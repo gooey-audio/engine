@@ -1,4 +1,4 @@
-use crate::envelope::{Envelope, ADSRConfig};
+use crate::envelope::{ADSRConfig, Envelope};
 use crate::waveform::Waveform;
 use crate::instrument::Instrument;
 
@@ -9,6 +9,8 @@ pub struct Oscillator {
     pub frequency_hz: f32,
     pub envelope: Envelope,
     pub volume: f32,
+    pub modulator_frequency_hz: f32,
+    pub enabled: bool,
 }
 
 impl Oscillator {
@@ -20,6 +22,8 @@ impl Oscillator {
             frequency_hz,
             envelope: Envelope::new(),
             volume: 1.0,
+            modulator_frequency_hz: frequency_hz * 0.5, // Default modulator at half carrier frequency
+            enabled: true,
         }
     }
 
@@ -65,6 +69,13 @@ impl Oscillator {
         self.generative_waveform(2, 2.0)
     }
 
+    fn ring_mod_wave(&mut self) -> f32 {
+        self.advance_sample();
+        let carrier = self.calculate_sine_output_from_freq(self.frequency_hz);
+        let modulator = self.calculate_sine_output_from_freq(self.modulator_frequency_hz);
+        carrier * modulator
+    }
+
     pub fn trigger(&mut self, time: f32) {
         self.envelope.trigger(time);
     }
@@ -81,12 +92,32 @@ impl Oscillator {
         self.envelope.set_config(config);
     }
 
+    pub fn set_modulator_frequency(&mut self, frequency_hz: f32) {
+        self.modulator_frequency_hz = frequency_hz.max(0.0);
+    }
+
+    pub fn get_modulator_frequency(&self) -> f32 {
+        self.modulator_frequency_hz
+    }
+
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        if !self.enabled {
+            return 0.0;
+        }
         let raw_output = match self.waveform {
             Waveform::Sine => self.sine_wave(),
             Waveform::Square => self.square_wave(),
             Waveform::Saw => self.saw_wave(),
             Waveform::Triangle => self.triangle_wave(),
+            Waveform::RingMod => self.ring_mod_wave(),
         };
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume
