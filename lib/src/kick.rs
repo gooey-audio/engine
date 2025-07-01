@@ -4,13 +4,13 @@ use crate::waveform::Waveform;
 
 #[derive(Clone, Copy, Debug)]
 pub struct KickConfig {
-    pub kick_frequency: f32,    // Base frequency (40-80Hz typical)
-    pub punch_amount: f32,      // Mid-frequency presence (0.0-1.0)
-    pub sub_amount: f32,        // Sub-bass presence (0.0-1.0)
-    pub click_amount: f32,      // High-frequency click (0.0-1.0)
-    pub decay_time: f32,        // Overall decay length in seconds
-    pub pitch_drop: f32,        // Frequency sweep amount (0.0-1.0)
-    pub volume: f32,            // Overall volume (0.0-1.0)
+    pub kick_frequency: f32, // Base frequency (40-80Hz typical)
+    pub punch_amount: f32,   // Mid-frequency presence (0.0-1.0)
+    pub sub_amount: f32,     // Sub-bass presence (0.0-1.0)
+    pub click_amount: f32,   // High-frequency click (0.0-1.0)
+    pub decay_time: f32,     // Overall decay length in seconds
+    pub pitch_drop: f32,     // Frequency sweep amount (0.0-1.0)
+    pub volume: f32,         // Overall volume (0.0-1.0)
 }
 
 impl KickConfig {
@@ -54,17 +54,17 @@ impl KickConfig {
 pub struct KickDrum {
     pub sample_rate: f32,
     pub config: KickConfig,
-    
+
     // Three oscillators for different frequency ranges
-    pub sub_oscillator: Oscillator,     // Sub-bass (fundamental)
-    pub punch_oscillator: Oscillator,   // Mid-range punch
-    pub click_oscillator: Oscillator,   // High-frequency click
-    
+    pub sub_oscillator: Oscillator,   // Sub-bass (fundamental)
+    pub punch_oscillator: Oscillator, // Mid-range punch
+    pub click_oscillator: Oscillator, // High-frequency click
+
     // Pitch envelope for frequency sweeping
     pub pitch_envelope: Envelope,
     pub base_frequency: f32,
     pub pitch_start_multiplier: f32,
-    
+
     pub is_active: bool,
 }
 
@@ -86,52 +86,55 @@ impl KickDrum {
             pitch_start_multiplier: 1.0 + config.pitch_drop * 2.0, // Start 1-3x higher
             is_active: false,
         };
-        
+
         kick.configure_oscillators();
         kick
     }
 
     fn configure_oscillators(&mut self) {
         let config = self.config;
-        
+
         // Sub oscillator: Deep sine wave with longer decay
         self.sub_oscillator.waveform = Waveform::Sine;
         self.sub_oscillator.frequency_hz = config.kick_frequency;
-        self.sub_oscillator.set_volume(config.sub_amount * config.volume);
+        self.sub_oscillator
+            .set_volume(config.sub_amount * config.volume);
         self.sub_oscillator.set_adsr(ADSRConfig::new(
-            0.001,  // Very fast attack
+            0.001,                   // Very fast attack
             config.decay_time * 1.2, // Longer decay for sub
-            0.0,    // No sustain
+            0.0,                     // No sustain
             config.decay_time * 0.3, // Short release
         ));
 
         // Punch oscillator: Sine or triangle for mid-range impact
         self.punch_oscillator.waveform = Waveform::Triangle;
         self.punch_oscillator.frequency_hz = config.kick_frequency * 2.5;
-        self.punch_oscillator.set_volume(config.punch_amount * config.volume * 0.7);
+        self.punch_oscillator
+            .set_volume(config.punch_amount * config.volume * 0.7);
         self.punch_oscillator.set_adsr(ADSRConfig::new(
-            0.001,  // Very fast attack
+            0.001,                   // Very fast attack
             config.decay_time * 0.8, // Medium decay
-            0.0,    // No sustain
+            0.0,                     // No sustain
             config.decay_time * 0.2, // Short release
         ));
 
         // Click oscillator: High-frequency transient
         self.click_oscillator.waveform = Waveform::Triangle;
         self.click_oscillator.frequency_hz = config.kick_frequency * 40.0;
-        self.click_oscillator.set_volume(config.click_amount * config.volume * 0.3);
+        self.click_oscillator
+            .set_volume(config.click_amount * config.volume * 0.3);
         self.click_oscillator.set_adsr(ADSRConfig::new(
-            0.001,  // Very fast attack
+            0.001,                    // Very fast attack
             config.decay_time * 0.15, // Very short decay for click
-            0.0,    // No sustain
+            0.0,                      // No sustain
             config.decay_time * 0.05, // Very short release
         ));
 
         // Pitch envelope: Fast attack, medium decay for frequency sweeping
         self.pitch_envelope.set_config(ADSRConfig::new(
-            0.001,  // Instant attack
+            0.001,                   // Instant attack
             config.decay_time * 0.3, // Quick pitch drop
-            0.0,    // Drop to base frequency
+            0.0,                     // Drop to base frequency
             config.decay_time * 0.1, // Quick release
         ));
     }
@@ -145,12 +148,12 @@ impl KickDrum {
 
     pub fn trigger(&mut self, time: f32) {
         self.is_active = true;
-        
+
         // Trigger all oscillators
         self.sub_oscillator.trigger(time);
         self.punch_oscillator.trigger(time);
         self.click_oscillator.trigger(time);
-        
+
         // Trigger pitch envelope
         self.pitch_envelope.trigger(time);
     }
@@ -172,11 +175,11 @@ impl KickDrum {
         // Calculate pitch modulation
         let pitch_envelope_value = self.pitch_envelope.get_amplitude(current_time);
         let frequency_multiplier = 1.0 + (self.pitch_start_multiplier - 1.0) * pitch_envelope_value;
-        
+
         // Apply pitch envelope to oscillators
         self.sub_oscillator.frequency_hz = self.base_frequency * frequency_multiplier;
         self.punch_oscillator.frequency_hz = self.base_frequency * 2.5 * frequency_multiplier;
-        
+
         // Click oscillator gets less pitch modulation to maintain transient character
         let click_pitch_mod = 1.0 + (frequency_multiplier - 1.0) * 0.3;
         self.click_oscillator.frequency_hz = self.base_frequency * 40.0 * click_pitch_mod;
@@ -189,9 +192,10 @@ impl KickDrum {
         let total_output = sub_output + punch_output + click_output;
 
         // Check if kick is still active
-        if !self.sub_oscillator.envelope.is_active &&
-           !self.punch_oscillator.envelope.is_active &&
-           !self.click_oscillator.envelope.is_active {
+        if !self.sub_oscillator.envelope.is_active
+            && !self.punch_oscillator.envelope.is_active
+            && !self.click_oscillator.envelope.is_active
+        {
             self.is_active = false;
         }
 
