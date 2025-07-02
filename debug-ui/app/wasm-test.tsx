@@ -35,6 +35,16 @@ export default function WasmTest() {
     volume: 0.8,
   });
 
+  // Compressor state
+  const [compressorEnabled, setCompressorEnabled] = useState(false);
+  const [compressorConfig, setCompressorConfig] = useState({
+    threshold: -10.0,
+    ratio: 4.0,
+    attack: 10.0,
+    release: 100.0,
+    makeupGain: 0.0,
+  });
+
   async function loadWasm() {
     setIsLoading(true);
     try {
