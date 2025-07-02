@@ -2,6 +2,7 @@
 
 pub mod audio_state;
 pub mod envelope;
+pub mod kick;
 pub mod oscillator;
 pub mod stage;
 pub mod waveform;
@@ -10,6 +11,7 @@ pub mod waveform;
 #[cfg(feature = "web")]
 pub mod web {
     use super::envelope::ADSRConfig;
+    use super::kick::{KickConfig, KickDrum};
     use super::oscillator::Oscillator;
     use super::stage::Stage;
     use wasm_bindgen::prelude::*;
@@ -182,6 +184,111 @@ pub mod web {
         #[wasm_bindgen]
         pub fn is_instrument_enabled(&self, index: usize) -> bool {
             self.stage.is_instrument_enabled(index)
+        }
+    }
+
+    #[wasm_bindgen]
+    pub struct WasmKickDrum {
+        kick_drum: KickDrum,
+    }
+
+    #[wasm_bindgen]
+    impl WasmKickDrum {
+        #[wasm_bindgen(constructor)]
+        pub fn new(sample_rate: f32) -> WasmKickDrum {
+            WasmKickDrum {
+                kick_drum: KickDrum::new(sample_rate),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn new_with_preset(sample_rate: f32, preset_name: &str) -> WasmKickDrum {
+            let config = match preset_name {
+                "punchy" => KickConfig::punchy(),
+                "deep" => KickConfig::deep(),
+                "tight" => KickConfig::tight(),
+                _ => KickConfig::default(),
+            };
+            WasmKickDrum {
+                kick_drum: KickDrum::with_config(sample_rate, config),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn trigger(&mut self, time: f32) {
+            self.kick_drum.trigger(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn release(&mut self, time: f32) {
+            self.kick_drum.release(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn tick(&mut self, current_time: f32) -> f32 {
+            self.kick_drum.tick(current_time)
+        }
+
+        #[wasm_bindgen]
+        pub fn is_active(&self) -> bool {
+            self.kick_drum.is_active()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_volume(&mut self, volume: f32) {
+            self.kick_drum.set_volume(volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_frequency(&mut self, frequency: f32) {
+            self.kick_drum.set_frequency(frequency);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_decay(&mut self, decay_time: f32) {
+            self.kick_drum.set_decay(decay_time);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_punch(&mut self, punch_amount: f32) {
+            self.kick_drum.set_punch(punch_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_sub(&mut self, sub_amount: f32) {
+            self.kick_drum.set_sub(sub_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_click(&mut self, click_amount: f32) {
+            self.kick_drum.set_click(click_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_pitch_drop(&mut self, pitch_drop: f32) {
+            self.kick_drum.set_pitch_drop(pitch_drop);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_config(&mut self, 
+            kick_frequency: f32,
+            punch_amount: f32,
+            sub_amount: f32,
+            click_amount: f32,
+            decay_time: f32,
+            pitch_drop: f32,
+            volume: f32,
+        ) {
+            let config = KickConfig::new(
+                kick_frequency,
+                punch_amount,
+                sub_amount,
+                click_amount,
+                decay_time,
+                pitch_drop,
+                volume,
+            );
+            self.kick_drum.set_config(config);
         }
     }
 }
