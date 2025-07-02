@@ -2,7 +2,7 @@ name: Deploy Review App
 on:
   # Run this workflow on every PR event. Existing review apps will be updated when the PR is updated.
   pull_request:
-    types: [opened, reopened, synchronize, closed]
+    types: [opened, reopened, synchronize, closed, ready_for_review]
 
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -28,6 +28,14 @@ jobs:
     steps:
       - name: Get code
         uses: actions/checkout@v4
+
+      - name: Debug PR event
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Event action: ${{ github.event.action }}"
+          echo "PR number: ${{ github.event.number }}"
+          echo "PR state: ${{ github.event.pull_request.state }}"
+          echo "PR draft: ${{ github.event.pull_request.draft }}"
 
       - name: Deploy PR app to Fly.io
         id: deploy
