@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import init, { WasmStage, WasmKickDrum } from '../public/wasm/oscillator.js';
+import init, { WasmStage, WasmKickDrum, WasmSnareDrum } from '../public/wasm/oscillator.js';
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
   const kickDrumRef = useRef<WasmKickDrum | null>(null);
+  const snareDrumRef = useRef<WasmSnareDrum | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const kickAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const snareAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -32,6 +34,18 @@ export default function WasmTest() {
     click: 0.3,
     decay: 0.8,
     pitchDrop: 0.6,
+    volume: 0.8,
+  });
+
+  // Snare drum specific state
+  const [snarePreset, setSnarePreset] = useState('default');
+  const [snareConfig, setSnareConfig] = useState({
+    frequency: 200.0,
+    tonal: 0.3,
+    noise: 0.8,
+    crack: 0.6,
+    decay: 0.15,
+    pitchDrop: 0.4,
     volume: 0.8,
   });
 
@@ -63,11 +77,14 @@ export default function WasmTest() {
       // Create kick drum instance
       kickDrumRef.current = new WasmKickDrum(44100);
       
+      // Create snare drum instance
+      snareDrumRef.current = new WasmSnareDrum(44100);
+      
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
       
       setIsLoaded(true);
-      console.log('WASM Stage with 4 oscillators, kick drum, and Web Audio loaded successfully!');
+      console.log('WASM Stage with 4 oscillators, kick drum, snare drum, and Web Audio loaded successfully!');
     } catch (error) {
       console.error('Failed to load WASM:', error);
       alert('Failed to load WASM module: ' + String(error));
@@ -422,6 +439,133 @@ export default function WasmTest() {
     }
   }
 
+  // Snare drum functions
+  function triggerSnareDrum() {
+    if (!audioContextRef.current || !snareDrumRef.current || !isPlaying) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      // Stop any existing snare drum sound
+      if (snareAudioSourceRef.current) {
+        try {
+          snareAudioSourceRef.current.stop();
+        } catch (e) {
+          // Source might already be stopped, ignore error
+        }
+        snareAudioSourceRef.current = null;
+      }
+      
+      // Trigger snare drum
+      const currentTime = audioContextRef.current.currentTime;
+      snareDrumRef.current.trigger(currentTime);
+      
+      // Generate audio buffer (1 second for snare sounds)
+      const sampleRate = audioContextRef.current.sampleRate;
+      const bufferLength = sampleRate * 1; // 1 second
+      const audioBuffer = audioContextRef.current.createBuffer(1, bufferLength, sampleRate);
+      
+      // Get the channel data and fill it with WASM-generated samples
+      const channelData = audioBuffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const time = currentTime + (i / sampleRate);
+        channelData[i] = snareDrumRef.current.tick(time);
+      }
+      
+      // Create buffer source and play it
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      
+      // Clean up reference when source ends
+      source.onended = () => {
+        snareAudioSourceRef.current = null;
+      };
+      
+      snareAudioSourceRef.current = source;
+      source.start();
+      
+      console.log('Snare drum triggered!');
+    } catch (error) {
+      console.error('Failed to trigger snare drum:', error);
+      alert('Failed to trigger snare drum');
+    }
+  }
+
+  function releaseSnareDrum() {
+    if (!audioContextRef.current || !snareDrumRef.current) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      snareDrumRef.current.release(currentTime);
+      console.log('Snare drum released!');
+    } catch (error) {
+      console.error('Failed to release snare drum:', error);
+      alert('Failed to release snare drum');
+    }
+  }
+
+  function handleSnareConfigChange(param: keyof typeof snareConfig, value: number) {
+    if (!snareDrumRef.current) return;
+    
+    // Update local state
+    setSnareConfig(prev => ({ ...prev, [param]: value }));
+    
+    // Update the snare drum
+    switch (param) {
+      case 'frequency':
+        snareDrumRef.current.set_frequency(value);
+        break;
+      case 'tonal':
+        snareDrumRef.current.set_tonal(value);
+        break;
+      case 'noise':
+        snareDrumRef.current.set_noise(value);
+        break;
+      case 'crack':
+        snareDrumRef.current.set_crack(value);
+        break;
+      case 'decay':
+        snareDrumRef.current.set_decay(value);
+        break;
+      case 'pitchDrop':
+        snareDrumRef.current.set_pitch_drop(value);
+        break;
+      case 'volume':
+        snareDrumRef.current.set_volume(value);
+        break;
+    }
+  }
+
+  function handleSnarePresetChange(preset: string) {
+    if (!snareDrumRef.current) return;
+    
+    setSnarePreset(preset);
+    
+    // Create new snare drum with preset
+    snareDrumRef.current = WasmSnareDrum.new_with_preset(44100, preset);
+    
+    // Update state to match preset values
+    switch (preset) {
+      case 'crispy':
+        setSnareConfig({ frequency: 220.0, tonal: 0.2, noise: 0.9, crack: 0.8, decay: 0.12, pitchDrop: 0.3, volume: 0.85 });
+        break;
+      case 'deep':
+        setSnareConfig({ frequency: 180.0, tonal: 0.5, noise: 0.7, crack: 0.4, decay: 0.25, pitchDrop: 0.6, volume: 0.9 });
+        break;
+      case 'tight':
+        setSnareConfig({ frequency: 240.0, tonal: 0.4, noise: 0.8, crack: 0.7, decay: 0.08, pitchDrop: 0.2, volume: 0.8 });
+        break;
+      default: // default
+        setSnareConfig({ frequency: 200.0, tonal: 0.3, noise: 0.8, crack: 0.6, decay: 0.15, pitchDrop: 0.4, volume: 0.8 });
+    }
+  }
+
   return (
     <div className="p-8 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">WASM Audio Engine Test</h1>
@@ -432,7 +576,7 @@ export default function WasmTest() {
           disabled={isLoading || isLoaded}
           className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Loading...' : isLoaded ? 'Audio Engine Loaded (Stage + Kick)' : 'Load Audio Engine'}
+          {isLoading ? 'Loading...' : isLoaded ? 'Audio Engine Loaded (Stage + Kick + Snare)' : 'Load Audio Engine'}
         </button>
         
         <button
@@ -853,6 +997,174 @@ export default function WasmTest() {
               Release Kick
             </button>
           </div>
+
+          {/* Snare Drum Section */}
+          <div className="mt-8 pt-6 border-t border-gray-600">
+            <h3 className="font-semibold mb-4 text-center text-lg">🥁 Snare Drum</h3>
+            
+            {/* Snare Drum Trigger Button */}
+            <button
+              onClick={triggerSnareDrum}
+              disabled={!isLoaded || !isPlaying}
+              className="w-full px-4 py-3 mb-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold text-lg shadow-lg"
+            >
+              🥁 TRIGGER SNARE
+            </button>
+
+            {/* Preset Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Preset</label>
+              <select
+                value={snarePreset}
+                onChange={(e) => handleSnarePresetChange(e.target.value)}
+                disabled={!isLoaded}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded disabled:cursor-not-allowed"
+              >
+                <option value="default">Default</option>
+                <option value="crispy">Crispy</option>
+                <option value="deep">Deep</option>
+                <option value="tight">Tight</option>
+              </select>
+            </div>
+
+            {/* Snare Drum Controls */}
+            <div className="space-y-3">
+              {/* Frequency */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Frequency</label>
+                <input
+                  type="range"
+                  min="100"
+                  max="400"
+                  step="5"
+                  value={snareConfig.frequency}
+                  onChange={(e) => handleSnareConfigChange('frequency', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {snareConfig.frequency.toFixed(0)}Hz
+                </span>
+              </div>
+
+              {/* Volume */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Volume</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={snareConfig.volume}
+                  onChange={(e) => handleSnareConfigChange('volume', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {snareConfig.volume.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Decay Time */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Decay</label>
+                <input
+                  type="range"
+                  min="0.01"
+                  max="2"
+                  step="0.01"
+                  value={snareConfig.decay}
+                  onChange={(e) => handleSnareConfigChange('decay', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {snareConfig.decay.toFixed(2)}s
+                </span>
+              </div>
+
+              {/* Tonal Amount */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Tonal</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={snareConfig.tonal}
+                  onChange={(e) => handleSnareConfigChange('tonal', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {snareConfig.tonal.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Noise Amount */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Noise</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={snareConfig.noise}
+                  onChange={(e) => handleSnareConfigChange('noise', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {snareConfig.noise.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Crack Amount */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Crack</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={snareConfig.crack}
+                  onChange={(e) => handleSnareConfigChange('crack', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {snareConfig.crack.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Pitch Drop */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Pitch Drop</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={snareConfig.pitchDrop}
+                  onChange={(e) => handleSnareConfigChange('pitchDrop', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {snareConfig.pitchDrop.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Release Button */}
+            <button
+              onClick={releaseSnareDrum}
+              disabled={!isLoaded || !isPlaying}
+              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+            >
+              Release Snare
+            </button>
+          </div>
         </div>
       </div>
       
@@ -860,6 +1172,7 @@ export default function WasmTest() {
         <h2 className="font-semibold mb-2">Status:</h2>
         <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
         <p>Kick Drum: {isLoaded && kickDrumRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
+        <p>Snare Drum: {isLoaded && snareDrumRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
       </div>
@@ -880,6 +1193,9 @@ export default function WasmTest() {
           <li>• <strong>Kick Drum Instrument</strong>: Comprehensive 3-layer kick drum with sub-bass, punch, and click layers</li>
           <li>• <strong>Kick Presets</strong>: Built-in presets (Default, Punchy, Deep, Tight) for different kick styles</li>
           <li>• <strong>Kick Parameters</strong>: Frequency, punch, sub-bass, click, decay time, and pitch drop controls</li>
+          <li>• <strong>Snare Drum Instrument</strong>: Multi-layered snare with tonal, noise, and crack components</li>
+          <li>• <strong>Snare Presets</strong>: Built-in presets (Default, Crispy, Deep, Tight) for different snare styles</li>
+          <li>• <strong>Snare Parameters</strong>: Frequency, tonal amount, noise amount, crack amount, decay time, and pitch drop controls</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
         </ul>
       </div>
@@ -887,7 +1203,7 @@ export default function WasmTest() {
       <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded">
         <h3 className="font-semibold mb-2 text-yellow-300">Instructions:</h3>
         <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
-          <li>Click "Load Audio Engine" to initialize the WASM Stage with 4 oscillators and kick drum</li>
+          <li>Click "Load Audio Engine" to initialize the WASM Stage with 4 oscillators, kick drum, and snare drum</li>
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Use individual instrument buttons to test single oscillators</li>
           <li>Adjust instrument controls for each oscillator:</li>
@@ -915,6 +1231,16 @@ export default function WasmTest() {
             <li><strong>Punch:</strong> Control mid-range impact layer</li>
             <li><strong>Sub Bass:</strong> Control low-end presence</li>
             <li><strong>Click:</strong> Control high-frequency transient</li>
+            <li><strong>Decay:</strong> Adjust overall decay time</li>
+            <li><strong>Pitch Drop:</strong> Control frequency sweep effect</li>
+          </ul>
+          <li>Test the comprehensive snare drum with its own dedicated section:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Presets:</strong> Try different snare styles (Default, Crispy, Deep, Tight)</li>
+            <li><strong>Frequency:</strong> Adjust tonal frequency (100-400Hz)</li>
+            <li><strong>Tonal:</strong> Control the pitched component amount</li>
+            <li><strong>Noise:</strong> Control the noise component presence</li>
+            <li><strong>Crack:</strong> Control high-frequency crack transient</li>
             <li><strong>Decay:</strong> Adjust overall decay time</li>
             <li><strong>Pitch Drop:</strong> Control frequency sweep effect</li>
           </ul>
