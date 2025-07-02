@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import init, { WasmStage, WasmKickDrum } from '../public/wasm/oscillator.js';
+import init, { WasmStage, WasmKickDrum, WasmHiHat } from '../public/wasm/oscillator.js';
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
   const kickDrumRef = useRef<WasmKickDrum | null>(null);
+  const hihatRef = useRef<WasmHiHat | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const kickAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const hihatAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -33,6 +35,18 @@ export default function WasmTest() {
     decay: 0.8,
     pitchDrop: 0.6,
     volume: 0.8,
+  });
+
+  // Hi-hat specific state
+  const [hihatPreset, setHihatPreset] = useState('closed_default');
+  const [hihatConfig, setHihatConfig] = useState({
+    baseFrequency: 8000.0,
+    resonance: 0.7,
+    brightness: 0.6,
+    decayTime: 0.1,
+    attackTime: 0.001,
+    volume: 0.8,
+    isOpen: false,
   });
 
   async function loadWasm() {
@@ -63,11 +77,14 @@ export default function WasmTest() {
       // Create kick drum instance
       kickDrumRef.current = new WasmKickDrum(44100);
       
+      // Create hi-hat instance
+      hihatRef.current = WasmHiHat.new_with_preset(44100, 'closed_default');
+      
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
       
       setIsLoaded(true);
-      console.log('WASM Stage with 4 oscillators, kick drum, and Web Audio loaded successfully!');
+      console.log('WASM Stage with 4 oscillators, kick drum, hi-hat, and Web Audio loaded successfully!');
     } catch (error) {
       console.error('Failed to load WASM:', error);
       alert('Failed to load WASM module: ' + String(error));
@@ -420,6 +437,154 @@ export default function WasmTest() {
       default: // default
         setKickConfig({ frequency: 50.0, punch: 0.7, sub: 0.8, click: 0.3, decay: 0.8, pitchDrop: 0.6, volume: 0.8 });
     }
+  }
+
+  // Hi-hat functions
+  function triggerHiHat(preset?: string) {
+    if (!audioContextRef.current || !hihatRef.current || !isPlaying) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      // Stop any existing hi-hat sound
+      if (hihatAudioSourceRef.current) {
+        try {
+          hihatAudioSourceRef.current.stop();
+        } catch (e) {
+          // Source might already be stopped, ignore error
+        }
+        hihatAudioSourceRef.current = null;
+      }
+      
+      // Change preset if provided
+      if (preset && preset !== hihatPreset) {
+        hihatRef.current = WasmHiHat.new_with_preset(44100, preset);
+        setHihatPreset(preset);
+        updateHihatConfigFromPreset(preset);
+      }
+      
+      // Trigger hi-hat
+      const currentTime = audioContextRef.current.currentTime;
+      hihatRef.current.trigger(currentTime);
+      
+      // Generate audio buffer (1 second for hi-hat sounds)
+      const sampleRate = audioContextRef.current.sampleRate;
+      const bufferLength = sampleRate * 1; // 1 second
+      const audioBuffer = audioContextRef.current.createBuffer(1, bufferLength, sampleRate);
+      
+      // Get the channel data and fill it with WASM-generated samples
+      const channelData = audioBuffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const time = currentTime + (i / sampleRate);
+        channelData[i] = hihatRef.current.tick(time);
+      }
+      
+      // Create buffer source and play it
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      
+      // Clean up reference when source ends
+      source.onended = () => {
+        hihatAudioSourceRef.current = null;
+      };
+      
+      hihatAudioSourceRef.current = source;
+      source.start();
+      
+      console.log(`Hi-hat ${preset || hihatPreset} triggered!`);
+    } catch (error) {
+      console.error('Failed to trigger hi-hat:', error);
+      alert('Failed to trigger hi-hat');
+    }
+  }
+
+  function releaseHiHat() {
+    if (!audioContextRef.current || !hihatRef.current) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      hihatRef.current.release(currentTime);
+      console.log('Hi-hat released!');
+    } catch (error) {
+      console.error('Failed to release hi-hat:', error);
+      alert('Failed to release hi-hat');
+    }
+  }
+
+  function updateHihatConfigFromPreset(preset: string) {
+    // Update state to match preset values based on HiHatConfig presets
+    switch (preset) {
+      case 'closed_default':
+        setHihatConfig({ baseFrequency: 8000.0, resonance: 0.7, brightness: 0.6, decayTime: 0.1, attackTime: 0.001, volume: 0.8, isOpen: false });
+        break;
+      case 'open_default':
+        setHihatConfig({ baseFrequency: 8000.0, resonance: 0.5, brightness: 0.8, decayTime: 0.8, attackTime: 0.001, volume: 0.7, isOpen: true });
+        break;
+      case 'closed_tight':
+        setHihatConfig({ baseFrequency: 10000.0, resonance: 0.8, brightness: 0.5, decayTime: 0.05, attackTime: 0.001, volume: 0.9, isOpen: false });
+        break;
+      case 'open_bright':
+        setHihatConfig({ baseFrequency: 12000.0, resonance: 0.4, brightness: 1.0, decayTime: 1.2, attackTime: 0.001, volume: 0.8, isOpen: true });
+        break;
+      case 'closed_dark':
+        setHihatConfig({ baseFrequency: 6000.0, resonance: 0.6, brightness: 0.3, decayTime: 0.15, attackTime: 0.002, volume: 0.7, isOpen: false });
+        break;
+      case 'open_long':
+        setHihatConfig({ baseFrequency: 7000.0, resonance: 0.3, brightness: 0.7, decayTime: 2.0, attackTime: 0.001, volume: 0.6, isOpen: true });
+        break;
+      default:
+        setHihatConfig({ baseFrequency: 8000.0, resonance: 0.7, brightness: 0.6, decayTime: 0.1, attackTime: 0.001, volume: 0.8, isOpen: false });
+    }
+  }
+
+  function handleHihatConfigChange(param: keyof typeof hihatConfig, value: number | boolean) {
+    if (!hihatRef.current) return;
+    
+    // Update local state
+    setHihatConfig(prev => ({ ...prev, [param]: value }));
+    
+    // Update the hi-hat
+    switch (param) {
+      case 'baseFrequency':
+        hihatRef.current.set_frequency(value as number);
+        break;
+      case 'resonance':
+        hihatRef.current.set_resonance(value as number);
+        break;
+      case 'brightness':
+        hihatRef.current.set_brightness(value as number);
+        break;
+      case 'decayTime':
+        hihatRef.current.set_decay(value as number);
+        break;
+      case 'attackTime':
+        hihatRef.current.set_attack(value as number);
+        break;
+      case 'volume':
+        hihatRef.current.set_volume(value as number);
+        break;
+      case 'isOpen':
+        hihatRef.current.set_open(value as boolean);
+        break;
+    }
+  }
+
+  function handleHihatPresetChange(preset: string) {
+    if (!hihatRef.current) return;
+    
+    setHihatPreset(preset);
+    
+    // Create new hi-hat with preset
+    hihatRef.current = WasmHiHat.new_with_preset(44100, preset);
+    
+    // Update state to match preset values
+    updateHihatConfigFromPreset(preset);
   }
 
   return (
@@ -853,6 +1018,219 @@ export default function WasmTest() {
               Release Kick
             </button>
           </div>
+
+          {/* Hi-Hat Section */}
+          <div className="mt-8 pt-6 border-t border-gray-600">
+            <h3 className="font-semibold mb-4 text-center text-lg">🔔 Hi-Hat</h3>
+            
+            {/* Hi-Hat Preset Buttons */}
+            <div className="mb-6">
+              <h4 className="font-semibold mb-3 text-center">Quick Triggers</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => triggerHiHat('closed_default')}
+                  disabled={!isLoaded || !isPlaying}
+                  className="px-3 py-2 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded hover:from-yellow-700 hover:to-yellow-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold"
+                >
+                  🔔 Closed
+                </button>
+                
+                <button
+                  onClick={() => triggerHiHat('open_default')}
+                  disabled={!isLoaded || !isPlaying}
+                  className="px-3 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded hover:from-yellow-600 hover:to-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold"
+                >
+                  🔔 Open
+                </button>
+                
+                <button
+                  onClick={() => triggerHiHat('closed_tight')}
+                  disabled={!isLoaded || !isPlaying}
+                  className="px-3 py-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded hover:from-amber-700 hover:to-amber-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold"
+                >
+                  🔔 Tight
+                </button>
+                
+                <button
+                  onClick={() => triggerHiHat('open_bright')}
+                  disabled={!isLoaded || !isPlaying}
+                  className="px-3 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white rounded hover:from-yellow-500 hover:to-yellow-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold"
+                >
+                  🔔 Bright
+                </button>
+                
+                <button
+                  onClick={() => triggerHiHat('closed_dark')}
+                  disabled={!isLoaded || !isPlaying}
+                  className="px-3 py-2 bg-gradient-to-r from-yellow-700 to-yellow-800 text-white rounded hover:from-yellow-800 hover:to-yellow-900 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold"
+                >
+                  🔔 Dark
+                </button>
+                
+                <button
+                  onClick={() => triggerHiHat('open_long')}
+                  disabled={!isLoaded || !isPlaying}
+                  className="px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded hover:from-amber-600 hover:to-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold"
+                >
+                  🔔 Long
+                </button>
+              </div>
+            </div>
+
+            {/* Preset Selection Dropdown */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Current Preset</label>
+              <select
+                value={hihatPreset}
+                onChange={(e) => handleHihatPresetChange(e.target.value)}
+                disabled={!isLoaded}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded disabled:cursor-not-allowed"
+              >
+                <option value="closed_default">Closed Default</option>
+                <option value="open_default">Open Default</option>
+                <option value="closed_tight">Closed Tight</option>
+                <option value="open_bright">Open Bright</option>
+                <option value="closed_dark">Closed Dark</option>
+                <option value="open_long">Open Long</option>
+              </select>
+            </div>
+
+            {/* Hi-Hat Controls */}
+            <div className="space-y-3">
+              {/* Base Frequency */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Frequency</label>
+                <input
+                  type="range"
+                  min="4000"
+                  max="16000"
+                  step="100"
+                  value={hihatConfig.baseFrequency}
+                  onChange={(e) => handleHihatConfigChange('baseFrequency', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-16 text-sm font-mono text-right">
+                  {hihatConfig.baseFrequency.toFixed(0)}Hz
+                </span>
+              </div>
+
+              {/* Volume */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Volume</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={hihatConfig.volume}
+                  onChange={(e) => handleHihatConfigChange('volume', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {hihatConfig.volume.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Decay Time */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Decay</label>
+                <input
+                  type="range"
+                  min="0.01"
+                  max="3"
+                  step="0.01"
+                  value={hihatConfig.decayTime}
+                  onChange={(e) => handleHihatConfigChange('decayTime', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {hihatConfig.decayTime.toFixed(2)}s
+                </span>
+              </div>
+
+              {/* Brightness */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Brightness</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={hihatConfig.brightness}
+                  onChange={(e) => handleHihatConfigChange('brightness', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {hihatConfig.brightness.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Resonance */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Resonance</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={hihatConfig.resonance}
+                  onChange={(e) => handleHihatConfigChange('resonance', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {hihatConfig.resonance.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Attack Time */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Attack</label>
+                <input
+                  type="range"
+                  min="0.001"
+                  max="0.1"
+                  step="0.001"
+                  value={hihatConfig.attackTime}
+                  onChange={(e) => handleHihatConfigChange('attackTime', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {hihatConfig.attackTime.toFixed(3)}s
+                </span>
+              </div>
+
+              {/* Open/Closed Toggle */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Type</label>
+                <button
+                  onClick={() => handleHihatConfigChange('isOpen', !hihatConfig.isOpen)}
+                  disabled={!isLoaded}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors disabled:cursor-not-allowed ${
+                    hihatConfig.isOpen
+                      ? 'bg-yellow-600 text-white hover:bg-yellow-700 disabled:bg-gray-600'
+                      : 'bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-600'
+                  }`}
+                >
+                  {hihatConfig.isOpen ? '🔔 Open' : '🔔 Closed'}
+                </button>
+              </div>
+            </div>
+
+            {/* Release Button */}
+            <button
+              onClick={releaseHiHat}
+              disabled={!isLoaded || !isPlaying}
+              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+            >
+              Release Hi-Hat
+            </button>
+          </div>
         </div>
       </div>
       
@@ -860,6 +1238,7 @@ export default function WasmTest() {
         <h2 className="font-semibold mb-2">Status:</h2>
         <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
         <p>Kick Drum: {isLoaded && kickDrumRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
+        <p>Hi-Hat: {isLoaded && hihatRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
       </div>
@@ -880,6 +1259,9 @@ export default function WasmTest() {
           <li>• <strong>Kick Drum Instrument</strong>: Comprehensive 3-layer kick drum with sub-bass, punch, and click layers</li>
           <li>• <strong>Kick Presets</strong>: Built-in presets (Default, Punchy, Deep, Tight) for different kick styles</li>
           <li>• <strong>Kick Parameters</strong>: Frequency, punch, sub-bass, click, decay time, and pitch drop controls</li>
+          <li>• <strong>Hi-Hat Instrument</strong>: Noise-based hi-hat with dual oscillators and envelope control</li>
+          <li>• <strong>Hi-Hat Presets</strong>: 6 built-in presets (Closed Default, Open Default, Closed Tight, Open Bright, Closed Dark, Open Long)</li>
+          <li>• <strong>Hi-Hat Parameters</strong>: Base frequency, resonance, brightness, decay time, attack time, volume, and open/closed mode</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
         </ul>
       </div>
@@ -887,7 +1269,7 @@ export default function WasmTest() {
       <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded">
         <h3 className="font-semibold mb-2 text-yellow-300">Instructions:</h3>
         <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
-          <li>Click "Load Audio Engine" to initialize the WASM Stage with 4 oscillators and kick drum</li>
+          <li>Click "Load Audio Engine" to initialize the WASM Stage with 4 oscillators, kick drum, and hi-hat</li>
           <li>Click "Start Audio" to begin audio processing</li>
           <li>Use individual instrument buttons to test single oscillators</li>
           <li>Adjust instrument controls for each oscillator:</li>
@@ -917,6 +1299,17 @@ export default function WasmTest() {
             <li><strong>Click:</strong> Control high-frequency transient</li>
             <li><strong>Decay:</strong> Adjust overall decay time</li>
             <li><strong>Pitch Drop:</strong> Control frequency sweep effect</li>
+          </ul>
+          <li>Test the hi-hat instrument with its dedicated section:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Quick Triggers:</strong> Use preset buttons for instant testing (Closed, Open, Tight, Bright, Dark, Long)</li>
+            <li><strong>Preset Selection:</strong> Choose from 6 different hi-hat styles in the dropdown</li>
+            <li><strong>Base Frequency:</strong> Adjust the fundamental frequency (4000-16000Hz)</li>
+            <li><strong>Brightness:</strong> Control high-frequency emphasis and transient sharpness</li>
+            <li><strong>Resonance:</strong> Adjust metallic character and filter resonance</li>
+            <li><strong>Decay Time:</strong> Control how long the hi-hat rings out</li>
+            <li><strong>Attack Time:</strong> Adjust the initial transient speed</li>
+            <li><strong>Open/Closed Toggle:</strong> Switch between open and closed hi-hat modes</li>
           </ul>
         </ol>
       </div>
