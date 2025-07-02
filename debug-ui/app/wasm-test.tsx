@@ -422,6 +422,39 @@ export default function WasmTest() {
     }
   }
 
+  function handleCompressorEnabledChange(enabled: boolean) {
+    if (!stageRef.current) return;
+    
+    stageRef.current.set_compressor_enabled(enabled);
+    setCompressorEnabled(enabled);
+  }
+
+  function handleCompressorConfigChange(param: keyof typeof compressorConfig, value: number) {
+    if (!stageRef.current) return;
+    
+    // Update local state
+    setCompressorConfig(prev => ({ ...prev, [param]: value }));
+    
+    // Update the stage compressor
+    switch (param) {
+      case 'threshold':
+        stageRef.current.set_compressor_threshold(value);
+        break;
+      case 'ratio':
+        stageRef.current.set_compressor_ratio(value);
+        break;
+      case 'attack':
+        stageRef.current.set_compressor_attack(value);
+        break;
+      case 'release':
+        stageRef.current.set_compressor_release(value);
+        break;
+      case 'makeupGain':
+        stageRef.current.set_compressor_makeup_gain(value);
+        break;
+    }
+  }
+
   return (
     <div className="p-8 max-w-lg mx-auto">
       <h1 className="text-2xl font-bold mb-6">WASM Audio Engine Test</h1>
@@ -686,6 +719,119 @@ export default function WasmTest() {
             Release All Instruments
           </button>
 
+          {/* Compressor Section */}
+          <div className="mt-8 pt-6 border-t border-gray-600">
+            <h3 className="font-semibold mb-4 text-center text-lg">🎛️ Compressor</h3>
+            
+            {/* Compressor Enable/Disable */}
+            <div className="flex items-center justify-center mb-4">
+              <button
+                onClick={() => handleCompressorEnabledChange(!compressorEnabled)}
+                disabled={!isLoaded}
+                className={`px-6 py-2 font-medium rounded-lg transition-colors disabled:cursor-not-allowed ${
+                  compressorEnabled
+                    ? 'bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-600'
+                    : 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-600'
+                }`}
+              >
+                {compressorEnabled ? '🎛️ COMPRESSOR ON' : '🔇 COMPRESSOR OFF'}
+              </button>
+            </div>
+
+            {/* Compressor Controls */}
+            <div className="space-y-3">
+              {/* Threshold */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Threshold</label>
+                <input
+                  type="range"
+                  min="-40"
+                  max="0"
+                  step="0.5"
+                  value={compressorConfig.threshold}
+                  onChange={(e) => handleCompressorConfigChange('threshold', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {compressorConfig.threshold.toFixed(1)}dB
+                </span>
+              </div>
+
+              {/* Ratio */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Ratio</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.1"
+                  value={compressorConfig.ratio}
+                  onChange={(e) => handleCompressorConfigChange('ratio', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {compressorConfig.ratio.toFixed(1)}:1
+                </span>
+              </div>
+
+              {/* Attack */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Attack</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  step="0.1"
+                  value={compressorConfig.attack}
+                  onChange={(e) => handleCompressorConfigChange('attack', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {compressorConfig.attack.toFixed(1)}ms
+                </span>
+              </div>
+
+              {/* Release */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Release</label>
+                <input
+                  type="range"
+                  min="10"
+                  max="1000"
+                  step="1"
+                  value={compressorConfig.release}
+                  onChange={(e) => handleCompressorConfigChange('release', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {compressorConfig.release.toFixed(0)}ms
+                </span>
+              </div>
+
+              {/* Makeup Gain */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Makeup</label>
+                <input
+                  type="range"
+                  min="-20"
+                  max="20"
+                  step="0.1"
+                  value={compressorConfig.makeupGain}
+                  onChange={(e) => handleCompressorConfigChange('makeupGain', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {compressorConfig.makeupGain.toFixed(1)}dB
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Kick Drum Section */}
           <div className="mt-8 pt-6 border-t border-gray-600">
             <h3 className="font-semibold mb-4 text-center text-lg">🥁 Kick Drum</h3>
@@ -859,6 +1005,7 @@ export default function WasmTest() {
       <div className="mt-6 p-4 bg-gray-800 rounded">
         <h2 className="font-semibold mb-2">Status:</h2>
         <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
+        <p>Compressor: {isLoaded ? (compressorEnabled ? '✅ Enabled' : '⚪ Disabled') : '❌ Not loaded'}</p>
         <p>Kick Drum: {isLoaded && kickDrumRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
@@ -880,7 +1027,8 @@ export default function WasmTest() {
           <li>• <strong>Kick Drum Instrument</strong>: Comprehensive 3-layer kick drum with sub-bass, punch, and click layers</li>
           <li>• <strong>Kick Presets</strong>: Built-in presets (Default, Punchy, Deep, Tight) for different kick styles</li>
           <li>• <strong>Kick Parameters</strong>: Frequency, punch, sub-bass, click, decay time, and pitch drop controls</li>
-          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
+          <li>• <strong>Optional Compressor</strong>: Enable/disable compressor with threshold, ratio, attack, release, and makeup gain controls</li>
+          <li>• <strong>Audio Processing Chain</strong>: Instruments → Sum → Compressor (optional) → Limiter → Output</li>
         </ul>
       </div>
 
@@ -917,6 +1065,15 @@ export default function WasmTest() {
             <li><strong>Click:</strong> Control high-frequency transient</li>
             <li><strong>Decay:</strong> Adjust overall decay time</li>
             <li><strong>Pitch Drop:</strong> Control frequency sweep effect</li>
+          </ul>
+          <li>Experiment with the optional compressor for dynamic range control:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Enable/Disable:</strong> Toggle compressor on/off to hear the difference</li>
+            <li><strong>Threshold:</strong> Level above which compression starts (-40dB to 0dB)</li>
+            <li><strong>Ratio:</strong> Amount of compression applied above threshold (1:1 to 20:1)</li>
+            <li><strong>Attack:</strong> How quickly compression engages (1ms to 100ms)</li>
+            <li><strong>Release:</strong> How quickly compression disengages (10ms to 1000ms)</li>
+            <li><strong>Makeup Gain:</strong> Compensate for level reduction (-20dB to +20dB)</li>
           </ul>
         </ol>
       </div>

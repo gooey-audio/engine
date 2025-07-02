@@ -185,6 +185,67 @@ pub mod web {
         pub fn is_instrument_enabled(&self, index: usize) -> bool {
             self.stage.is_instrument_enabled(index)
         }
+
+        // Compressor control methods
+        #[wasm_bindgen]
+        pub fn set_compressor_enabled(&mut self, enabled: bool) {
+            self.stage.set_compressor_enabled(enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_compressor_enabled(&self) -> bool {
+            self.stage.is_compressor_enabled()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_compressor_threshold(&mut self, threshold: f32) {
+            self.stage.set_compressor_threshold(threshold);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_compressor_threshold(&self) -> f32 {
+            self.stage.get_compressor_threshold()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_compressor_ratio(&mut self, ratio: f32) {
+            self.stage.set_compressor_ratio(ratio);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_compressor_ratio(&self) -> f32 {
+            self.stage.get_compressor_ratio()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_compressor_attack(&mut self, attack_ms: f32) {
+            self.stage.set_compressor_attack(attack_ms);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_compressor_attack(&self) -> f32 {
+            self.stage.get_compressor_attack()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_compressor_release(&mut self, release_ms: f32) {
+            self.stage.set_compressor_release(release_ms);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_compressor_release(&self) -> f32 {
+            self.stage.get_compressor_release()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_compressor_makeup_gain(&mut self, gain_db: f32) {
+            self.stage.set_compressor_makeup_gain(gain_db);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_compressor_makeup_gain(&self) -> f32 {
+            self.stage.get_compressor_makeup_gain()
+        }
     }
 
     #[wasm_bindgen]
