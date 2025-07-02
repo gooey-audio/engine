@@ -5,4 +5,5 @@ pub enum Waveform {
     Saw,
     Triangle,
     RingMod,
+    Noise,
 } 

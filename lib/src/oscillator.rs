@@ -1,5 +1,7 @@
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::waveform::Waveform;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub struct Oscillator {
     pub sample_rate: f32,
@@ -75,6 +77,19 @@ impl Oscillator {
         carrier * modulator
     }
 
+    fn noise_wave(&mut self) -> f32 {
+        self.advance_sample();
+        
+        // Use current sample index to generate pseudo-random noise
+        let mut hasher = DefaultHasher::new();
+        (self.current_sample_index as u64).hash(&mut hasher);
+        let hash = hasher.finish();
+        
+        // Convert hash to float in range [-1.0, 1.0]
+        let normalized = (hash as f32) / (u64::MAX as f32);
+        (normalized * 2.0) - 1.0
+    }
+
     // Time-based waveform methods that don't use advance_sample()
     fn sine_wave_time_based(&self) -> f32 {
         self.calculate_sine_output_from_freq(self.frequency_hz)
@@ -107,6 +122,17 @@ impl Oscillator {
         let carrier = self.calculate_sine_output_from_freq(self.frequency_hz);
         let modulator = self.calculate_sine_output_from_freq(self.modulator_frequency_hz);
         carrier * modulator
+    }
+
+    fn noise_wave_time_based(&self) -> f32 {
+        // Use current sample index to generate pseudo-random noise
+        let mut hasher = DefaultHasher::new();
+        (self.current_sample_index as u64).hash(&mut hasher);
+        let hash = hasher.finish();
+        
+        // Convert hash to float in range [-1.0, 1.0]
+        let normalized = (hash as f32) / (u64::MAX as f32);
+        (normalized * 2.0) - 1.0
     }
 
     pub fn trigger(&mut self, time: f32) {
@@ -164,6 +190,7 @@ impl Oscillator {
             Waveform::Saw => self.saw_wave_time_based(),
             Waveform::Triangle => self.triangle_wave_time_based(),
             Waveform::RingMod => self.ring_mod_wave_time_based(),
+            Waveform::Noise => self.noise_wave_time_based(),
         };
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume
