@@ -274,7 +274,8 @@ pub mod web {
         }
 
         #[wasm_bindgen]
-        pub fn set_config(&mut self, 
+        pub fn set_config(
+            &mut self,
             kick_frequency: f32,
             punch_amount: f32,
             sub_amount: f32,
@@ -396,7 +397,8 @@ pub mod web {
         }
 
         #[wasm_bindgen]
-        pub fn set_config(&mut self, 
+        pub fn set_config(
+            &mut self,
             base_frequency: f32,
             resonance: f32,
             brightness: f32,
