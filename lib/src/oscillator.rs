@@ -1,5 +1,6 @@
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::waveform::Waveform;
+use rand::Rng;
 
 pub struct Oscillator {
     pub sample_rate: f32,
@@ -10,6 +11,9 @@ pub struct Oscillator {
     pub volume: f32,
     pub modulator_frequency_hz: f32,
     pub enabled: bool,
+    // Noise generation state
+    pub noise_filter_state: f32, // For pink noise filtering
+    pub noise_highpass_state: f32, // For snare noise high-pass filtering
 }
 
 impl Oscillator {
@@ -23,6 +27,8 @@ impl Oscillator {
             volume: 1.0,
             modulator_frequency_hz: frequency_hz * 0.5, // Default modulator at half carrier frequency
             enabled: true,
+            noise_filter_state: 0.0,
+            noise_highpass_state: 0.0,
         }
     }
 
@@ -75,6 +81,36 @@ impl Oscillator {
         carrier * modulator
     }
 
+    fn white_noise(&mut self) -> f32 {
+        self.advance_sample();
+        let mut rng = rand::thread_rng();
+        rng.gen_range(-1.0..1.0)
+    }
+
+    fn pink_noise(&mut self) -> f32 {
+        self.advance_sample();
+        let mut rng = rand::thread_rng();
+        let white = rng.gen_range(-1.0..1.0);
+        
+        // Simple pink noise filter (1/f characteristic)
+        let alpha = 0.99;
+        self.noise_filter_state = alpha * self.noise_filter_state + (1.0 - alpha) * white;
+        self.noise_filter_state * 0.5 // Scale down as pink noise can be louder
+    }
+
+    fn snare_noise(&mut self) -> f32 {
+        self.advance_sample();
+        let mut rng = rand::thread_rng();
+        let white = rng.gen_range(-1.0..1.0);
+        
+        // High-pass filter for snare character (removes low frequencies)
+        let cutoff = 0.85; // Aggressive high-pass for snare snap
+        let filtered = white - cutoff * self.noise_highpass_state;
+        self.noise_highpass_state = white;
+        
+        filtered * 0.7 // Scale to prevent clipping
+    }
+
     // Time-based waveform methods that don't use advance_sample()
     fn sine_wave_time_based(&self) -> f32 {
         self.calculate_sine_output_from_freq(self.frequency_hz)
@@ -107,6 +143,33 @@ impl Oscillator {
         let carrier = self.calculate_sine_output_from_freq(self.frequency_hz);
         let modulator = self.calculate_sine_output_from_freq(self.modulator_frequency_hz);
         carrier * modulator
+    }
+
+    fn white_noise_time_based(&self) -> f32 {
+        let mut rng = rand::thread_rng();
+        rng.gen_range(-1.0..1.0)
+    }
+
+    fn pink_noise_time_based(&mut self) -> f32 {
+        let mut rng = rand::thread_rng();
+        let white = rng.gen_range(-1.0..1.0);
+        
+        // Simple pink noise filter (1/f characteristic)
+        let alpha = 0.99;
+        self.noise_filter_state = alpha * self.noise_filter_state + (1.0 - alpha) * white;
+        self.noise_filter_state * 0.5 // Scale down as pink noise can be louder
+    }
+
+    fn snare_noise_time_based(&mut self) -> f32 {
+        let mut rng = rand::thread_rng();
+        let white = rng.gen_range(-1.0..1.0);
+        
+        // High-pass filter for snare character (removes low frequencies)
+        let cutoff = 0.85; // Aggressive high-pass for snare snap
+        let filtered = white - cutoff * self.noise_highpass_state;
+        self.noise_highpass_state = white;
+        
+        filtered * 0.7 // Scale to prevent clipping
     }
 
     pub fn trigger(&mut self, time: f32) {
@@ -164,6 +227,9 @@ impl Oscillator {
             Waveform::Saw => self.saw_wave_time_based(),
             Waveform::Triangle => self.triangle_wave_time_based(),
             Waveform::RingMod => self.ring_mod_wave_time_based(),
+            Waveform::WhiteNoise => self.white_noise_time_based(),
+            Waveform::PinkNoise => self.pink_noise_time_based(),
+            Waveform::SnareNoise => self.snare_noise_time_based(),
         };
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume

@@ -5,4 +5,7 @@ pub enum Waveform {
     Saw,
     Triangle,
     RingMod,
+    WhiteNoise,
+    PinkNoise,
+    SnareNoise,
 } 
