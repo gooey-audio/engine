@@ -11,7 +11,7 @@ export default function WasmTest() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const kickAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const hihatAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const spectrumAnalyzerRef = useRef<{ connectSource: (source: AudioNode) => void; getAnalyser: () => AnalyserNode | null } | null>(null);
+  const spectrumAnalyzerRef = useRef<{ connectSource: (source: AudioNode) => void; getAnalyser: () => AnalyserNode | null; getMonitoringNode: () => GainNode | null } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -148,12 +148,12 @@ export default function WasmTest() {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
       
-      // Connect to spectrum analyzer if available
-      if (spectrumAnalyzerRef.current) {
-        spectrumAnalyzerRef.current.connectSource(source);
+      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
+      if (spectrumAnalyzerRef.current && spectrumAnalyzerRef.current.getMonitoringNode()) {
+        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        source.connect(audioContextRef.current.destination);
       }
-      
-      source.connect(audioContextRef.current.destination);
       source.start();
       
       console.log('All instruments triggered!');
@@ -191,12 +191,12 @@ export default function WasmTest() {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
       
-      // Connect to spectrum analyzer if available
-      if (spectrumAnalyzerRef.current) {
-        spectrumAnalyzerRef.current.connectSource(source);
+      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
+      if (spectrumAnalyzerRef.current && spectrumAnalyzerRef.current.getMonitoringNode()) {
+        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        source.connect(audioContextRef.current.destination);
       }
-      
-      source.connect(audioContextRef.current.destination);
       source.start();
       
       console.log(`${name} triggered!`);
@@ -365,12 +365,12 @@ export default function WasmTest() {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
       
-      // Connect to spectrum analyzer if available
-      if (spectrumAnalyzerRef.current) {
-        spectrumAnalyzerRef.current.connectSource(source);
+      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
+      if (spectrumAnalyzerRef.current && spectrumAnalyzerRef.current.getMonitoringNode()) {
+        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        source.connect(audioContextRef.current.destination);
       }
-      
-      source.connect(audioContextRef.current.destination);
       
       // Clean up reference when source ends
       source.onended = () => {
@@ -505,12 +505,12 @@ export default function WasmTest() {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
       
-      // Connect to spectrum analyzer if available
-      if (spectrumAnalyzerRef.current) {
-        spectrumAnalyzerRef.current.connectSource(source);
+      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
+      if (spectrumAnalyzerRef.current && spectrumAnalyzerRef.current.getMonitoringNode()) {
+        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        source.connect(audioContextRef.current.destination);
       }
-      
-      source.connect(audioContextRef.current.destination);
       
       // Clean up reference when source ends
       source.onended = () => {
@@ -614,10 +614,12 @@ export default function WasmTest() {
   }
 
   return (
-    <div className="p-8 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-6">WASM Audio Engine Test</h1>
+    <div className="p-8 max-w-7xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6 text-center">WASM Audio Engine Test</h1>
       
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column - Controls */}
+        <div className="space-y-4">
         <button
           onClick={loadWasm}
           disabled={isLoading || isLoaded}
@@ -1258,26 +1260,30 @@ export default function WasmTest() {
             </button>
           </div>
         </div>
-      </div>
-      
-      {/* Spectrum Analyzer */}
-      <div className="mt-6">
-        <SpectrumAnalyzerWithRef
-          ref={spectrumAnalyzerRef}
-          audioContext={audioContextRef.current}
-          isActive={isPlaying}
-          width={800}
-          height={200}
-        />
-      </div>
-      
-      <div className="mt-6 p-4 bg-gray-800 rounded">
-        <h2 className="font-semibold mb-2">Status:</h2>
-        <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
-        <p>Kick Drum: {isLoaded && kickDrumRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
-        <p>Hi-Hat: {isLoaded && hihatRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
-        <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
-        <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
+        </div>
+        
+        {/* Right Column - Spectrum Analyzer and Status */}
+        <div className="space-y-4">
+          {/* Spectrum Analyzer */}
+          <div className="sticky top-4">
+            <SpectrumAnalyzerWithRef
+              ref={spectrumAnalyzerRef}
+              audioContext={audioContextRef.current}
+              isActive={isPlaying}
+              width={600}
+              height={200}
+            />
+          </div>
+          
+          <div className="p-4 bg-gray-800 rounded">
+            <h2 className="font-semibold mb-2">Status:</h2>
+            <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
+            <p>Kick Drum: {isLoaded && kickDrumRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
+            <p>Hi-Hat: {isLoaded && hihatRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
+            <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
+            <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
+          </div>
+        </div>
       </div>
       
       <div className="mt-4 p-4 bg-blue-900/20 border border-blue-600/30 rounded">
