@@ -13,6 +13,7 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  const monitorGainRef = useRef<GainNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isSetup, setIsSetup] = useState(false);
 
@@ -28,17 +29,25 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
       
       // Create gain node for monitoring without affecting output
       const gainNode = audioContext.createGain();
-      gainNode.gain.value = 0; // Silent monitoring
+      gainNode.gain.value = 1.0; // Pass-through gain
       
-      // Connect: destination <- gainNode <- analyser
-      analyser.connect(gainNode);
+      // Create monitoring gain node that connects to analyzer
+      const monitorGain = audioContext.createGain();
+      monitorGain.gain.value = 1.0; // Monitor at full level
+      
+      // Replace the default destination with our monitoring setup
+      // All audio will flow through: source -> gainNode -> destination
+      //                                     \-> monitorGain -> analyser
       gainNode.connect(audioContext.destination);
+      gainNode.connect(monitorGain);
+      monitorGain.connect(analyser);
       
       analyserRef.current = analyser;
       gainNodeRef.current = gainNode;
+      monitorGainRef.current = monitorGain;
       setIsSetup(true);
       
-      console.log('Spectrum analyzer setup complete');
+      console.log('Spectrum analyzer setup complete - monitoring final output');
     } catch (error) {
       console.error('Failed to setup spectrum analyzer:', error);
     }
@@ -143,13 +152,16 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
     };
   }, [isActive, width, height]);
 
-  // Provide a method to connect audio sources to the analyzer
+  // Provide a method to connect audio sources to the monitoring gain node
   const connectSource = (source: AudioNode) => {
-    if (analyserRef.current) {
-      source.connect(analyserRef.current);
-      console.log('Audio source connected to spectrum analyzer');
+    if (gainNodeRef.current) {
+      source.connect(gainNodeRef.current);
+      console.log('Audio source connected to spectrum analyzer monitoring');
     }
   };
+
+  // Provide access to the monitoring gain node for audio routing
+  const getMonitoringNode = () => gainNodeRef.current;
 
 
   return (
@@ -181,11 +193,12 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
 
 // Export the component with a ref to access connectSource method
 export const SpectrumAnalyzerWithRef = React.forwardRef<
-  { connectSource: (source: AudioNode) => void; getAnalyser: () => AnalyserNode | null },
+  { connectSource: (source: AudioNode) => void; getAnalyser: () => AnalyserNode | null; getMonitoringNode: () => GainNode | null },
   SpectrumAnalyzerProps
 >((props, ref) => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  const monitorGainRef = useRef<GainNode | null>(null);
   const [isSetup, setIsSetup] = useState(false);
 
   // Setup the analyzer when audioContext is available
@@ -200,17 +213,25 @@ export const SpectrumAnalyzerWithRef = React.forwardRef<
       
       // Create gain node for monitoring without affecting output
       const gainNode = props.audioContext.createGain();
-      gainNode.gain.value = 0; // Silent monitoring
+      gainNode.gain.value = 1.0; // Pass-through gain
       
-      // Connect: destination <- gainNode <- analyser
-      analyser.connect(gainNode);
+      // Create monitoring gain node that connects to analyzer
+      const monitorGain = props.audioContext.createGain();
+      monitorGain.gain.value = 1.0; // Monitor at full level
+      
+      // Replace the default destination with our monitoring setup
+      // All audio will flow through: source -> gainNode -> destination
+      //                                     \-> monitorGain -> analyser
       gainNode.connect(props.audioContext.destination);
+      gainNode.connect(monitorGain);
+      monitorGain.connect(analyser);
       
       analyserRef.current = analyser;
       gainNodeRef.current = gainNode;
+      monitorGainRef.current = monitorGain;
       setIsSetup(true);
       
-      console.log('Spectrum analyzer setup complete');
+      console.log('Spectrum analyzer setup complete - monitoring final output');
     } catch (error) {
       console.error('Failed to setup spectrum analyzer:', error);
     }
@@ -218,12 +239,13 @@ export const SpectrumAnalyzerWithRef = React.forwardRef<
 
   React.useImperativeHandle(ref, () => ({
     connectSource: (source: AudioNode) => {
-      if (analyserRef.current) {
-        source.connect(analyserRef.current);
-        console.log('Audio source connected to spectrum analyzer');
+      if (gainNodeRef.current) {
+        source.connect(gainNodeRef.current);
+        console.log('Audio source connected to spectrum analyzer monitoring');
       }
     },
     getAnalyser: () => analyserRef.current,
+    getMonitoringNode: () => gainNodeRef.current,
   }));
 
   return <SpectrumAnalyzer {...props} />;
