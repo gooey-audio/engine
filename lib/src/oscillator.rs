@@ -1,5 +1,6 @@
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::waveform::Waveform;
+use crate::noise::{NoiseGenerator, NoiseType};
 
 pub struct Oscillator {
     pub sample_rate: f32,
@@ -10,6 +11,11 @@ pub struct Oscillator {
     pub volume: f32,
     pub modulator_frequency_hz: f32,
     pub enabled: bool,
+    // Noise generators for each noise type
+    white_noise: NoiseGenerator,
+    pink_noise: NoiseGenerator,
+    brown_noise: NoiseGenerator,
+    snare_noise: NoiseGenerator,
 }
 
 impl Oscillator {
@@ -23,6 +29,11 @@ impl Oscillator {
             volume: 1.0,
             modulator_frequency_hz: frequency_hz * 0.5, // Default modulator at half carrier frequency
             enabled: true,
+            // Initialize noise generators with different seeds for variation
+            white_noise: NoiseGenerator::new(NoiseType::White, 12345),
+            pink_noise: NoiseGenerator::new(NoiseType::Pink, 23456),
+            brown_noise: NoiseGenerator::new(NoiseType::Brown, 34567),
+            snare_noise: NoiseGenerator::new(NoiseType::Snare, 45678),
         }
     }
 
@@ -75,6 +86,26 @@ impl Oscillator {
         carrier * modulator
     }
 
+    fn white_noise_wave(&mut self) -> f32 {
+        self.advance_sample();
+        self.white_noise.generate()
+    }
+
+    fn pink_noise_wave(&mut self) -> f32 {
+        self.advance_sample();
+        self.pink_noise.generate()
+    }
+
+    fn brown_noise_wave(&mut self) -> f32 {
+        self.advance_sample();
+        self.brown_noise.generate()
+    }
+
+    fn snare_noise_wave(&mut self) -> f32 {
+        self.advance_sample();
+        self.snare_noise.generate()
+    }
+
     pub fn trigger(&mut self, time: f32) {
         self.envelope.trigger(time);
     }
@@ -117,6 +148,10 @@ impl Oscillator {
             Waveform::Saw => self.saw_wave(),
             Waveform::Triangle => self.triangle_wave(),
             Waveform::RingMod => self.ring_mod_wave(),
+            Waveform::WhiteNoise => self.white_noise_wave(),
+            Waveform::PinkNoise => self.pink_noise_wave(),
+            Waveform::BrownNoise => self.brown_noise_wave(),
+            Waveform::SnareNoise => self.snare_noise_wave(),
         };
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume

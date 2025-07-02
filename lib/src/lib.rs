@@ -2,7 +2,9 @@
 
 pub mod audio_state;
 pub mod envelope;
+pub mod noise;
 pub mod oscillator;
+pub mod snare;
 pub mod stage;
 pub mod waveform;
 
@@ -146,6 +148,10 @@ pub mod web {
                 2 => crate::waveform::Waveform::Saw,
                 3 => crate::waveform::Waveform::Triangle,
                 4 => crate::waveform::Waveform::RingMod,
+                5 => crate::waveform::Waveform::WhiteNoise,
+                6 => crate::waveform::Waveform::PinkNoise,
+                7 => crate::waveform::Waveform::BrownNoise,
+                8 => crate::waveform::Waveform::SnareNoise,
                 _ => crate::waveform::Waveform::Sine, // Default to sine for invalid values
             };
             self.stage.set_instrument_waveform(index, waveform);
@@ -160,6 +166,10 @@ pub mod web {
                 crate::waveform::Waveform::Saw => 2,
                 crate::waveform::Waveform::Triangle => 3,
                 crate::waveform::Waveform::RingMod => 4,
+                crate::waveform::Waveform::WhiteNoise => 5,
+                crate::waveform::Waveform::PinkNoise => 6,
+                crate::waveform::Waveform::BrownNoise => 7,
+                crate::waveform::Waveform::SnareNoise => 8,
             }
         }
 
@@ -182,6 +192,99 @@ pub mod web {
         #[wasm_bindgen]
         pub fn is_instrument_enabled(&self, index: usize) -> bool {
             self.stage.is_instrument_enabled(index)
+        }
+
+        #[wasm_bindgen]
+        pub fn set_drum_adsr(&mut self, index: usize) {
+            let config = crate::envelope::ADSRConfig::drum_default();
+            self.stage.set_instrument_adsr(index, config);
+        }
+    }
+
+    #[wasm_bindgen]
+    pub struct WasmSnareInstrument {
+        snare: crate::snare::SnareInstrument,
+    }
+
+    #[wasm_bindgen]
+    impl WasmSnareInstrument {
+        #[wasm_bindgen(constructor)]
+        pub fn new(sample_rate: f32) -> WasmSnareInstrument {
+            WasmSnareInstrument {
+                snare: crate::snare::SnareInstrument::new(sample_rate),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn trigger(&mut self, time: f32) {
+            self.snare.trigger(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn release(&mut self, time: f32) {
+            self.snare.release(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn tick(&mut self, current_time: f32) -> f32 {
+            self.snare.tick(current_time)
+        }
+
+        #[wasm_bindgen]
+        pub fn set_volume(&mut self, volume: f32) {
+            self.snare.set_volume(volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_frequency(&mut self, frequency_hz: f32) {
+            self.snare.set_frequency(frequency_hz);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_frequency(&self) -> f32 {
+            self.snare.get_frequency()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_noise_mix_level(&mut self, level: f32) {
+            self.snare.set_noise_mix_level(level);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_noise_mix_level(&self) -> f32 {
+            self.snare.get_noise_mix_level()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_tonal_noise_mix(&mut self, mix: f32) {
+            self.snare.set_tonal_noise_mix(mix);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_tonal_noise_mix(&self) -> f32 {
+            self.snare.get_tonal_noise_mix() 
+        }
+
+        #[wasm_bindgen]
+        pub fn set_adsr(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) {
+            let config = crate::envelope::ADSRConfig::new(attack, decay, sustain, release);
+            self.snare.set_adsr(config);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_drum_adsr(&mut self) {
+            let config = crate::envelope::ADSRConfig::drum_default();
+            self.snare.set_adsr(config);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_enabled(&mut self, enabled: bool) {
+            self.snare.set_enabled(enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_enabled(&self) -> bool {
+            self.snare.is_enabled()
         }
     }
 }
