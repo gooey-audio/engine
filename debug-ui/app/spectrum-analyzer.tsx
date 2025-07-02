@@ -151,11 +151,6 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
     }
   };
 
-  // Expose the connect method via ref
-  React.useImperativeHandle(React.forwardRef(() => null), () => ({
-    connectSource,
-    getAnalyser: () => analyserRef.current,
-  }));
 
   return (
     <div className="spectrum-analyzer-container bg-gray-800 p-4 rounded-lg border border-gray-600">
