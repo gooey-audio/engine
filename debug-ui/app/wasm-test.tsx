@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import init, { WasmStage, WasmKickDrum, WasmHiHat } from '../public/wasm/oscillator.js';
+import { SpectrumAnalyzerWithRef } from './spectrum-analyzer';
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
@@ -10,6 +11,7 @@ export default function WasmTest() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const kickAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const hihatAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const spectrumAnalyzerRef = useRef<{ connectSource: (source: AudioNode) => void; getAnalyser: () => AnalyserNode | null } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -145,6 +147,12 @@ export default function WasmTest() {
       // Create buffer source and play it
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
+      
+      // Connect to spectrum analyzer if available
+      if (spectrumAnalyzerRef.current) {
+        spectrumAnalyzerRef.current.connectSource(source);
+      }
+      
       source.connect(audioContextRef.current.destination);
       source.start();
       
@@ -182,6 +190,12 @@ export default function WasmTest() {
       // Create buffer source and play it
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
+      
+      // Connect to spectrum analyzer if available
+      if (spectrumAnalyzerRef.current) {
+        spectrumAnalyzerRef.current.connectSource(source);
+      }
+      
       source.connect(audioContextRef.current.destination);
       source.start();
       
@@ -350,6 +364,12 @@ export default function WasmTest() {
       // Create buffer source and play it
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
+      
+      // Connect to spectrum analyzer if available
+      if (spectrumAnalyzerRef.current) {
+        spectrumAnalyzerRef.current.connectSource(source);
+      }
+      
       source.connect(audioContextRef.current.destination);
       
       // Clean up reference when source ends
@@ -484,6 +504,12 @@ export default function WasmTest() {
       // Create buffer source and play it
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
+      
+      // Connect to spectrum analyzer if available
+      if (spectrumAnalyzerRef.current) {
+        spectrumAnalyzerRef.current.connectSource(source);
+      }
+      
       source.connect(audioContextRef.current.destination);
       
       // Clean up reference when source ends
@@ -1232,6 +1258,17 @@ export default function WasmTest() {
             </button>
           </div>
         </div>
+      </div>
+      
+      {/* Spectrum Analyzer */}
+      <div className="mt-6">
+        <SpectrumAnalyzerWithRef
+          ref={spectrumAnalyzerRef}
+          audioContext={audioContextRef.current}
+          isActive={isPlaying}
+          width={800}
+          height={200}
+        />
       </div>
       
       <div className="mt-6 p-4 bg-gray-800 rounded">
