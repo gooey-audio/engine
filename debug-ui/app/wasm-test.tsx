@@ -7,6 +7,7 @@ export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
   const kickDrumRef = useRef<WasmKickDrum | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const kickAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -302,6 +303,16 @@ export default function WasmTest() {
     }
 
     try {
+      // Stop any existing kick drum sound
+      if (kickAudioSourceRef.current) {
+        try {
+          kickAudioSourceRef.current.stop();
+        } catch (e) {
+          // Source might already be stopped, ignore error
+        }
+        kickAudioSourceRef.current = null;
+      }
+      
       // Trigger kick drum
       const currentTime = audioContextRef.current.currentTime;
       kickDrumRef.current.trigger(currentTime);
@@ -323,6 +334,13 @@ export default function WasmTest() {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioContextRef.current.destination);
+      
+      // Clean up reference when source ends
+      source.onended = () => {
+        kickAudioSourceRef.current = null;
+      };
+      
+      kickAudioSourceRef.current = source;
       source.start();
       
       console.log('Kick drum triggered!');

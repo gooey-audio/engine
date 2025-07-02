@@ -75,8 +75,44 @@ impl Oscillator {
         carrier * modulator
     }
 
+    // Time-based waveform methods that don't use advance_sample()
+    fn sine_wave_time_based(&self) -> f32 {
+        self.calculate_sine_output_from_freq(self.frequency_hz)
+    }
+
+    fn generative_waveform_time_based(&self, harmonic_index_increment: i32, gain_exponent: f32) -> f32 {
+        let mut output = 0.0;
+        let mut i = 1;
+        while !self.is_multiple_of_freq_above_nyquist(i as f32) {
+            let gain = 1.0 / (i as f32).powf(gain_exponent);
+            output += gain * self.calculate_sine_output_from_freq(self.frequency_hz * i as f32);
+            i += harmonic_index_increment;
+        }
+        output
+    }
+
+    fn square_wave_time_based(&self) -> f32 {
+        self.generative_waveform_time_based(2, 1.0)
+    }
+
+    fn saw_wave_time_based(&self) -> f32 {
+        self.generative_waveform_time_based(1, 1.0)
+    }
+
+    fn triangle_wave_time_based(&self) -> f32 {
+        self.generative_waveform_time_based(2, 2.0)
+    }
+
+    fn ring_mod_wave_time_based(&self) -> f32 {
+        let carrier = self.calculate_sine_output_from_freq(self.frequency_hz);
+        let modulator = self.calculate_sine_output_from_freq(self.modulator_frequency_hz);
+        carrier * modulator
+    }
+
     pub fn trigger(&mut self, time: f32) {
         self.envelope.trigger(time);
+        // Reset phase for consistent sound on each trigger
+        self.current_sample_index = 0.0;
     }
 
     pub fn release(&mut self, time: f32) {
@@ -111,12 +147,23 @@ impl Oscillator {
         if !self.enabled {
             return 0.0;
         }
+        
+        // Update phase based on time elapsed since trigger
+        let elapsed_since_trigger = if self.envelope.is_active {
+            current_time - self.envelope.trigger_time
+        } else {
+            0.0
+        };
+        
+        // Calculate phase from elapsed time and frequency
+        self.current_sample_index = (elapsed_since_trigger * self.sample_rate) % self.sample_rate;
+        
         let raw_output = match self.waveform {
-            Waveform::Sine => self.sine_wave(),
-            Waveform::Square => self.square_wave(),
-            Waveform::Saw => self.saw_wave(),
-            Waveform::Triangle => self.triangle_wave(),
-            Waveform::RingMod => self.ring_mod_wave(),
+            Waveform::Sine => self.sine_wave_time_based(),
+            Waveform::Square => self.square_wave_time_based(),
+            Waveform::Saw => self.saw_wave_time_based(),
+            Waveform::Triangle => self.triangle_wave_time_based(),
+            Waveform::RingMod => self.ring_mod_wave_time_based(),
         };
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
         raw_output * envelope_amplitude * self.volume
