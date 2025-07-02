@@ -1,23 +1,53 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import init, { WasmStage } from '../public/wasm/oscillator.js';
+import init, { WasmStage, WasmKickDrum, WasmHiHat } from '../public/wasm/oscillator.js';
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
+  const kickDrumRef = useRef<WasmKickDrum | null>(null);
+  const hihatRef = useRef<WasmHiHat | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const kickAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const hihatAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
-  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle)
+  const [modulatorFrequencies, setModulatorFrequencies] = useState([100, 150, 220, 300]); // Modulator frequency for each instrument (for ring modulation)
+  const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle, 4=RingMod, 5=Noise)
+  const [enabled, setEnabled] = useState([true, true, true, true]); // Enabled state for each instrument
   const [adsrValues, setAdsrValues] = useState([
     { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }, // Bass Drum
     { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.1 }, // Snare
     { attack: 0.001, decay: 0.02, sustain: 0.2, release: 0.05 }, // Hi-hat
     { attack: 0.005, decay: 0.2, sustain: 0.8, release: 0.5 }, // Cymbal
   ]);
+
+  // Kick drum specific state
+  const [kickPreset, setKickPreset] = useState('default');
+  const [kickConfig, setKickConfig] = useState({
+    frequency: 50.0,
+    punch: 0.7,
+    sub: 0.8,
+    click: 0.3,
+    decay: 0.8,
+    pitchDrop: 0.6,
+    volume: 0.8,
+  });
+
+  // Hi-hat specific state
+  const [hihatPreset, setHihatPreset] = useState('closed_default');
+  const [hihatConfig, setHihatConfig] = useState({
+    baseFrequency: 8000.0,
+    resonance: 0.7,
+    brightness: 0.6,
+    decayTime: 0.1,
+    attackTime: 0.001,
+    volume: 0.8,
+    isOpen: false,
+  });
   
   // Sequencer state
   const [sequencerSteps, setSequencerSteps] = useState<boolean[][]>(
@@ -48,11 +78,22 @@ export default function WasmTest() {
         stageRef.current?.set_instrument_adsr(index, adsr.attack, adsr.decay, adsr.sustain, adsr.release);
       });
       
+      // Initialize modulator frequencies for each instrument
+      modulatorFrequencies.forEach((freq, index) => {
+        stageRef.current?.set_instrument_modulator_frequency(index, freq);
+      });
+      
+      // Create kick drum instance
+      kickDrumRef.current = new WasmKickDrum(44100);
+      
+      // Create hi-hat instance
+      hihatRef.current = WasmHiHat.new_with_preset(44100, 'closed_default');
+      
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
       
       setIsLoaded(true);
-      console.log('WASM Stage with 4 oscillators and Web Audio loaded successfully!');
+      console.log('WASM Stage with 4 oscillators, kick drum, hi-hat, sequencer, and Web Audio loaded successfully!');
     } catch (error) {
       console.error('Failed to load WASM:', error);
       alert('Failed to load WASM module: ' + String(error));
@@ -188,6 +229,20 @@ export default function WasmTest() {
     });
   }
 
+  function handleModulatorFrequencyChange(index: number, frequency: number) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_modulator_frequency(index, frequency);
+    
+    // Update local state for UI
+    setModulatorFrequencies(prev => {
+      const newFrequencies = [...prev];
+      newFrequencies[index] = frequency;
+      return newFrequencies;
+    });
+  }
+
   function handleWaveformChange(index: number, waveformType: number) {
     if (!stageRef.current) return;
     
@@ -199,6 +254,20 @@ export default function WasmTest() {
       const newWaveforms = [...prev];
       newWaveforms[index] = waveformType;
       return newWaveforms;
+    });
+  }
+
+  function handleEnabledChange(index: number, isEnabled: boolean) {
+    if (!stageRef.current) return;
+    
+    // Update the WASM stage
+    stageRef.current.set_instrument_enabled(index, isEnabled);
+    
+    // Update local state for UI
+    setEnabled(prev => {
+      const newEnabled = [...prev];
+      newEnabled[index] = isEnabled;
+      return newEnabled;
     });
   }
 
@@ -353,6 +422,88 @@ export default function WasmTest() {
     setBpm(newBpm);
   }
 
+  // Kick drum functions
+  function triggerKickDrum() {
+    if (!audioContextRef.current || !kickDrumRef.current || !isPlaying) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      kickDrumRef.current.trigger(currentTime);
+      
+      // Generate audio buffer for kick drum
+      const sampleRate = audioContextRef.current.sampleRate;
+      const bufferLength = sampleRate; // 1 second
+      const audioBuffer = audioContextRef.current.createBuffer(1, bufferLength, sampleRate);
+      const channelData = audioBuffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const time = currentTime + (i / sampleRate);
+        channelData[i] = kickDrumRef.current.tick(time);
+      }
+      
+      // Stop previous kick audio source if playing
+      if (kickAudioSourceRef.current) {
+        kickAudioSourceRef.current.stop();
+      }
+      
+      // Create and start new audio source
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      source.start();
+      kickAudioSourceRef.current = source;
+      
+      console.log('Kick drum triggered!');
+    } catch (error) {
+      console.error('Failed to trigger kick drum:', error);
+      alert('Failed to trigger kick drum');
+    }
+  }
+
+  // Hi-hat functions
+  function triggerHiHat() {
+    if (!audioContextRef.current || !hihatRef.current || !isPlaying) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      hihatRef.current.trigger(currentTime);
+      
+      // Generate audio buffer for hi-hat
+      const sampleRate = audioContextRef.current.sampleRate;
+      const bufferLength = sampleRate; // 1 second
+      const audioBuffer = audioContextRef.current.createBuffer(1, bufferLength, sampleRate);
+      const channelData = audioBuffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const time = currentTime + (i / sampleRate);
+        channelData[i] = hihatRef.current.tick(time);
+      }
+      
+      // Stop previous hi-hat audio source if playing
+      if (hihatAudioSourceRef.current) {
+        hihatAudioSourceRef.current.stop();
+      }
+      
+      // Create and start new audio source
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      source.start();
+      hihatAudioSourceRef.current = source;
+      
+      console.log('Hi-hat triggered!');
+    } catch (error) {
+      console.error('Failed to trigger hi-hat:', error);
+      alert('Failed to trigger hi-hat');
+    }
+  }
+
   // Cleanup interval on unmount
   React.useEffect(() => {
     return () => {
@@ -364,7 +515,7 @@ export default function WasmTest() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">WASM Stage API Test</h1>
+      <h1 className="text-2xl font-bold mb-6">WASM Audio Engine Test</h1>
       
       <div className="space-y-4">
         <button
@@ -372,7 +523,7 @@ export default function WasmTest() {
           disabled={isLoading || isLoaded}
           className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Loading...' : isLoaded ? 'Stage Loaded (4 Oscillators)' : 'Load Stage'}
+          {isLoading ? 'Loading...' : isLoaded ? 'Audio Engine Loaded (Stage + Kick + Hi-Hat + Sequencer)' : 'Load Audio Engine'}
         </button>
         
         <button
@@ -491,14 +642,36 @@ export default function WasmTest() {
         </div>
 
         <div className="border-t pt-4">
-          <h3 className="font-semibold mb-3 text-center">Manual Instrument Controls</h3>
+          <h3 className="font-semibold mb-3 text-center">Specialized Drum Instruments</h3>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <button
+              onClick={triggerKickDrum}
+              disabled={!isLoaded || !isPlaying}
+              className="px-4 py-3 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+            >
+              🥁 Kick Drum
+            </button>
+            
+            <button
+              onClick={triggerHiHat}
+              disabled={!isLoaded || !isPlaying}
+              className="px-4 py-3 bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+            >
+              🔔 Hi-Hat
+            </button>
+          </div>
+        </div>
+
+        <div className="border-t pt-4">
+          <h3 className="font-semibold mb-3 text-center">Manual Stage Instrument Controls</h3>
           
           <button
             onClick={triggerAll}
             disabled={!isLoaded || !isPlaying}
             className="w-full px-4 py-2 mb-3 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
           >
-            🥁 Trigger All Instruments
+            🥁 Trigger All Stage Instruments
           </button>
           
           <div className="grid grid-cols-2 gap-2">
@@ -536,7 +709,7 @@ export default function WasmTest() {
           </div>
           
           <div className="mt-6">
-            <h4 className="font-semibold mb-3 text-center">Instrument Controls</h4>
+            <h4 className="font-semibold mb-3 text-center">Stage Instrument Controls</h4>
             <div className="space-y-4">
               {[
                 { name: '🥁 Bass Drum', color: 'red' },
@@ -545,7 +718,19 @@ export default function WasmTest() {
                 { name: '🥽 Cymbal', color: 'cyan' }
               ].map((instrument, index) => (
                 <div key={index} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                  <h5 className="font-medium mb-2 text-sm">{instrument.name}</h5>
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-medium text-sm">{instrument.name}</h5>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={enabled[index]}
+                        onChange={(e) => handleEnabledChange(index, e.target.checked)}
+                        disabled={!isLoaded}
+                        className="rounded"
+                      />
+                      <span className="text-xs">Enabled</span>
+                    </label>
+                  </div>
                   
                   {/* Volume Control */}
                   <div className="flex items-center space-x-2 mb-2">
@@ -582,6 +767,24 @@ export default function WasmTest() {
                       {frequencies[index]}Hz
                     </span>
                   </div>
+
+                  {/* Modulator Frequency Control */}
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="w-12 text-xs font-medium">Mod</label>
+                    <input
+                      type="range"
+                      min="10"
+                      max="1000"
+                      step="5"
+                      value={modulatorFrequencies[index]}
+                      onChange={(e) => handleModulatorFrequencyChange(index, parseInt(e.target.value))}
+                      disabled={!isLoaded}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span className="w-16 text-xs font-mono text-right">
+                      {modulatorFrequencies[index]}Hz
+                    </span>
+                  </div>
                   
                   {/* Waveform Control */}
                   <div className="flex items-center space-x-2 mb-3">
@@ -596,6 +799,8 @@ export default function WasmTest() {
                       <option value={1}>Square</option>
                       <option value={2}>Saw</option>
                       <option value={3}>Triangle</option>
+                      <option value={4}>Ring Mod</option>
+                      <option value={5}>Noise</option>
                     </select>
                   </div>
                   
@@ -696,7 +901,7 @@ export default function WasmTest() {
             disabled={!isLoaded || !isPlaying}
             className="w-full mt-3 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
           >
-            Release All Instruments
+            Release All Stage Instruments
           </button>
         </div>
       </div>
@@ -704,62 +909,38 @@ export default function WasmTest() {
       <div className="mt-6 p-4 bg-gray-800 rounded">
         <h2 className="font-semibold mb-2">Status:</h2>
         <p>WASM Stage: {isLoaded ? '✅ Loaded (4 oscillators)' : '❌ Not loaded'}</p>
+        <p>Kick Drum: {kickDrumRef.current ? '✅ Ready' : '❌ No'}</p>
+        <p>Hi-Hat: {hihatRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
         <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
         <p>Sequencer: {isSequencerPlaying ? `✅ Playing (Step ${currentStep + 1}/16, ${bpm} BPM)` : '⏸️ Stopped'}</p>
       </div>
       
       <div className="mt-4 p-4 bg-blue-900/20 border border-blue-600/30 rounded">
-        <h3 className="font-semibold mb-2 text-blue-300">Stage API Demo:</h3>
+        <h3 className="font-semibold mb-2 text-blue-300">Audio Engine Features:</h3>
         <ul className="text-sm space-y-1 text-blue-100">
-          <li>• <strong>Multi-instrument</strong>: Stage contains 4 oscillators with independent controls</li>
           <li>• <strong>16-Step Sequencer</strong>: Automatic timing and triggering at 120 BPM (adjustable 60-180)</li>
-          <li>• <strong>Pattern Programming</strong>: Click checkboxes to program drum patterns for each instrument</li>
-          <li>• <strong>Real-time Control</strong>: Start/stop/reset sequencer while audio is playing</li>
-          <li>• <strong>Individual control</strong>: Trigger each instrument separately</li>
-          <li>• <strong>Group control</strong>: Trigger all instruments simultaneously</li>
-          <li>• <strong>Volume control</strong>: Adjust volume (0.0-1.0) for each instrument</li>
-          <li>• <strong>Frequency control</strong>: Adjust frequency (50-2000Hz) for each instrument</li>
-          <li>• <strong>Waveform control</strong>: Select waveform type (Sine, Square, Saw, Triangle) for each instrument</li>
-          <li>• <strong>ADSR envelope</strong>: Real-time Attack, Decay, Sustain, Release control per instrument</li>
-          <li>• <strong>Release control</strong>: Manually trigger release phase for individual or all instruments</li>
-          <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
+          <li>• <strong>Multi-instrument Stage</strong>: 4 oscillators with independent controls</li>
+          <li>• <strong>Specialized Drums</strong>: Dedicated kick drum and hi-hat with realistic synthesis</li>
+          <li>• <strong>Advanced Waveforms</strong>: Sine, Square, Saw, Triangle, Ring Modulation, Noise</li>
+          <li>• <strong>Real-time Control</strong>: Live pattern editing, volume, frequency, modulation</li>
+          <li>• <strong>ADSR Envelopes</strong>: Full Attack, Decay, Sustain, Release control per instrument</li>
+          <li>• <strong>Audio Mixing</strong>: All components mixed with limiter to prevent clipping</li>
         </ul>
       </div>
 
       <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded">
         <h3 className="font-semibold mb-2 text-yellow-300">Instructions:</h3>
         <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
-          <li>Click "Load Stage" to initialize the WASM Stage with 4 oscillators</li>
+          <li>Click "Load Audio Engine" to initialize all components</li>
           <li>Click "Start Audio" to begin audio processing</li>
-          <li><strong>Using the Sequencer:</strong></li>
-          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
-            <li><strong>Program patterns:</strong> Click checkboxes in the 16-step grid for each instrument</li>
-            <li><strong>Adjust BPM:</strong> Use the slider to change tempo (60-180 BPM)</li>
-            <li><strong>Play/Stop:</strong> Use sequencer transport controls to start/stop playback</li>
-            <li><strong>Reset:</strong> Jump back to step 1 without stopping</li>
-            <li><strong>Clear:</strong> Remove all programmed steps</li>
-            <li><strong>Live editing:</strong> Change patterns while sequencer is playing</li>
-          </ul>
-          <li><strong>Manual Control:</strong> Use individual instrument buttons to test single oscillators</li>
-          <li>Adjust instrument controls for each oscillator:</li>
-          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
-            <li><strong>Volume:</strong> Control relative volume of each instrument (0.0-1.0)</li>
-            <li><strong>Frequency:</strong> Change the pitch of each instrument (50-2000Hz)</li>
-            <li><strong>Waveform:</strong> Select tone quality (Sine, Square, Saw, Triangle)</li>
-          </ul>
-          <li>Adjust ADSR envelope controls to shape the sound envelope:</li>
-          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
-            <li><strong>Attack:</strong> Time to reach full volume (0.001-2s)</li>
-            <li><strong>Decay:</strong> Time to drop to sustain level (0.001-2s)</li>
-            <li><strong>Sustain:</strong> Level held while triggered (0-1)</li>
-            <li><strong>Release:</strong> Time to fade to silence (0.001-5s)</li>
-          </ul>
-          <li>Use "Release" buttons to manually trigger the release phase</li>
-          <li>Use "Release All" to release all instruments simultaneously</li>
-          <li>Use "Trigger All" to hear the mixed output of all instruments with all controls applied</li>
+          <li><strong>Using the Sequencer:</strong> Program patterns in the 16-step grid for Stage instruments</li>
+          <li><strong>Specialized Drums:</strong> Use the dedicated Kick Drum and Hi-Hat buttons for realistic percussion</li>
+          <li><strong>Stage Instruments:</strong> Control 4 versatile oscillators with full parameter access</li>
+          <li>Adjust BPM, volumes, frequencies, waveforms, and ADSR envelopes in real-time</li>
+          <li>Enable/disable instruments and use Ring Modulation with adjustable modulator frequencies</li>
         </ol>
       </div>
     </div>
   );
-} 
+}

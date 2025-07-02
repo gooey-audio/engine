@@ -235,6 +235,34 @@ impl Stage {
     pub fn sequencer_get_bpm(&self) -> f32 {
         self.sequencer.bpm
     }
+
+    pub fn set_instrument_modulator_frequency(&mut self, index: usize, frequency_hz: f32) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.set_modulator_frequency(frequency_hz);
+        }
+    }
+
+    pub fn get_instrument_modulator_frequency(&self, index: usize) -> f32 {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.get_modulator_frequency()
+        } else {
+            0.0
+        }
+    }
+
+    pub fn set_instrument_enabled(&mut self, index: usize, enabled: bool) {
+        if let Some(instrument) = self.instruments.get_mut(index) {
+            instrument.enabled = enabled;
+        }
+    }
+
+    pub fn is_instrument_enabled(&self, index: usize) -> bool {
+        if let Some(instrument) = self.instruments.get(index) {
+            instrument.enabled
+        } else {
+            false
+        }
+    }
 }
 
 /// A brick wall limiter that prevents audio signals from exceeding a threshold
