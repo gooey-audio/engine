@@ -7,55 +7,23 @@ interface SpectrumAnalyzerProps {
   isActive: boolean;
   width?: number;
   height?: number;
+  analyser?: AnalyserNode | null;
 }
 
-export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, height = 200 }: SpectrumAnalyzerProps) {
+export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, height = 200, analyser }: SpectrumAnalyzerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const monitorGainRef = useRef<GainNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const [isSetup, setIsSetup] = useState(false);
 
-  // Setup the analyzer when audioContext is available
+  // Use the passed analyser directly
   useEffect(() => {
-    if (!audioContext || isSetup) return;
-
-    try {
-      // Create analyzer node
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.8;
-      
-      // Create gain node for monitoring without affecting output
-      const gainNode = audioContext.createGain();
-      gainNode.gain.value = 1.0; // Pass-through gain
-      
-      // Create monitoring gain node that connects to analyzer
-      const monitorGain = audioContext.createGain();
-      monitorGain.gain.value = 1.0; // Monitor at full level
-      
-      // Replace the default destination with our monitoring setup
-      // All audio will flow through: source -> gainNode -> destination
-      //                                     \-> monitorGain -> analyser
-      gainNode.connect(audioContext.destination);
-      gainNode.connect(monitorGain);
-      monitorGain.connect(analyser);
-      
-      analyserRef.current = analyser;
-      gainNodeRef.current = gainNode;
-      monitorGainRef.current = monitorGain;
-      setIsSetup(true);
-      
-      console.log('Spectrum analyzer setup complete - monitoring final output');
-    } catch (error) {
-      console.error('Failed to setup spectrum analyzer:', error);
+    if (analyser) {
+      console.log('Spectrum analyzer using external analyser node');
     }
-  }, [audioContext, isSetup]);
+  }, [analyser]);
 
   // Animation loop for drawing the spectrum
   useEffect(() => {
-    if (!isActive || !analyserRef.current || !canvasRef.current) {
+    if (!isActive || !analyser || !canvasRef.current) {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -65,7 +33,6 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
 
     const canvas = canvasRef.current;
     const canvasContext = canvas.getContext('2d');
-    const analyser = analyserRef.current;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
@@ -150,28 +117,16 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isActive, width, height]);
-
-  // Provide a method to connect audio sources to the monitoring gain node
-  const connectSource = (source: AudioNode) => {
-    if (gainNodeRef.current) {
-      source.connect(gainNodeRef.current);
-      console.log('Audio source connected to spectrum analyzer monitoring');
-    }
-  };
-
-  // Provide access to the monitoring gain node for audio routing
-  const getMonitoringNode = () => gainNodeRef.current;
-
+  }, [isActive, width, height, analyser]);
 
   return (
     <div className="spectrum-analyzer-container bg-gray-800 p-4 rounded-lg border border-gray-600">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-white">Spectrum Analyzer</h3>
         <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${isActive && isSetup ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div className={`w-3 h-3 rounded-full ${isActive && analyser ? 'bg-green-500' : 'bg-red-500'}`}></div>
           <span className="text-sm text-gray-300">
-            {isActive && isSetup ? 'Active' : 'Inactive'}
+            {isActive && analyser ? 'Active' : 'Inactive'}
           </span>
         </div>
       </div>
@@ -248,7 +203,7 @@ export const SpectrumAnalyzerWithRef = React.forwardRef<
     getMonitoringNode: () => gainNodeRef.current,
   }));
 
-  return <SpectrumAnalyzer {...props} />;
+  return <SpectrumAnalyzer {...props} analyser={analyserRef.current} />;
 });
 
 SpectrumAnalyzerWithRef.displayName = 'SpectrumAnalyzerWithRef';
