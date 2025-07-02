@@ -16,8 +16,8 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
 
     # Only run one deployment at a time per PR.
-    concurrency:
-      group: pr-${{ github.event.number }}
+    # concurrency:
+      # group: pr-${{ github.event.number }}
 
     # Create a GitHub deployment environment per staging app so it shows up
     # in the pull request UI.
