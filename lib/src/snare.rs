@@ -106,7 +106,7 @@ impl SnareDrum {
         self.tonal_oscillator.set_adsr(ADSRConfig::new(
             0.001,                   // Very fast attack
             config.decay_time * 0.8, // Main decay
-            0.05,                    // Low sustain for drum character
+            0.0,                     // No sustain - drums should decay to silence
             config.decay_time * 0.4, // Medium release
         ));
 
@@ -118,7 +118,7 @@ impl SnareDrum {
         self.noise_oscillator.set_adsr(ADSRConfig::new(
             0.001,                   // Very fast attack
             config.decay_time * 0.6, // Shorter decay for noise
-            0.02,                    // Very low sustain
+            0.0,                     // No sustain - drums should decay to silence
             config.decay_time * 0.3, // Quick release
         ));
 

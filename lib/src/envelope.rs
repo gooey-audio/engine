@@ -117,6 +117,10 @@ impl Envelope {
                 1.0 - (1.0 - self.sustain_level) * decay_progress
             } else {
                 // Sustain phase (holds until release is triggered)
+                // For drums with 0.0 sustain, automatically trigger release
+                if self.sustain_level == 0.0 && self.release_time_start.is_none() {
+                    self.release_time_start = Some(current_time);
+                }
                 self.sustain_level
             }
         }
