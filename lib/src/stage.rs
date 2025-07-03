@@ -50,11 +50,17 @@ impl Stage {
             if self.sequencer.should_trigger_step(current_time) {
                 let current_step = self.sequencer.current_step;
                 
-                // Trigger instruments that have a hit on the current step
+                // Collect which instruments should be triggered to avoid borrow conflicts
+                let mut instruments_to_trigger = Vec::new();
                 for (instrument_index, pattern) in self.sequencer.patterns.iter().enumerate() {
                     if pattern[current_step] && instrument_index < self.instruments.len() {
-                        self.trigger_instrument(instrument_index, current_time);
+                        instruments_to_trigger.push(instrument_index);
                     }
+                }
+                
+                // Now trigger the instruments (with mutable access)
+                for instrument_index in instruments_to_trigger {
+                    self.trigger_instrument(instrument_index, current_time);
                 }
                 
                 // Mark that we've processed this step
