@@ -141,13 +141,13 @@ export default function Sequencer({ stageRef, isLoaded, isPlaying }: SequencerPr
       </div>
 
       {/* Step Grid */}
-      <div className="space-y-3">
+      <div className="space-y-3 overflow-x-auto">
         {instrumentNames.map((name, instrumentIndex) => (
-          <div key={instrumentIndex} className="flex items-center space-x-2">
-            <div className={`w-20 text-xs font-medium text-white text-center py-1 rounded ${instrumentColors[instrumentIndex]}`}>
+          <div key={instrumentIndex} className="flex items-center space-x-2 min-w-fit">
+            <div className={`w-24 text-xs font-medium text-white text-center py-1 rounded ${instrumentColors[instrumentIndex]} flex-shrink-0`}>
               {name}
             </div>
-            <div className="flex space-x-1">
+            <div className="flex space-x-1 flex-shrink-0">
               {Array.from({ length: 16 }, (_, stepIndex) => (
                 <button
                   key={stepIndex}

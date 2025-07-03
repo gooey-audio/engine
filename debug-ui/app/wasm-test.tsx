@@ -27,6 +27,7 @@ export default function WasmTest() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const audioGenerationRef = useRef<NodeJS.Timeout | null>(null);
   const [activeTab, setActiveTab] = useState<
     "oscillators" | "kick" | "hihat" | "snare"
   >("oscillators");
@@ -135,6 +136,53 @@ export default function WasmTest() {
     }
   }
 
+  function generateContinuousAudio() {
+    if (!audioContextRef.current || !stageRef.current || !isPlaying) {
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      
+      // Generate a small buffer (64ms worth of audio for responsive sequencer timing)
+      const sampleRate = audioContextRef.current.sampleRate;
+      const bufferLength = Math.floor(sampleRate * 0.064); // 64ms buffer
+      const audioBuffer = audioContextRef.current.createBuffer(
+        1,
+        bufferLength,
+        sampleRate
+      );
+
+      // Get the channel data and fill it with WASM-generated samples
+      const channelData = audioBuffer.getChannelData(0);
+
+      for (let i = 0; i < bufferLength; i++) {
+        const time = currentTime + i / sampleRate;
+        channelData[i] = stageRef.current.tick(time);
+      }
+
+      // Create buffer source and play it
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+
+      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
+      if (
+        spectrumAnalyzerRef.current &&
+        spectrumAnalyzerRef.current.getMonitoringNode()
+      ) {
+        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        source.connect(audioContextRef.current.destination);
+      }
+      source.start();
+
+      // Schedule next audio generation (slightly before current buffer ends)
+      audioGenerationRef.current = setTimeout(generateContinuousAudio, 50);
+    } catch (error) {
+      console.error("Failed to generate continuous audio:", error);
+    }
+  }
+
   async function startAudio() {
     if (!audioContextRef.current || !stageRef.current) {
       alert('WASM not loaded yet. Click "Load WASM" first.');
@@ -148,6 +196,10 @@ export default function WasmTest() {
       }
 
       setIsPlaying(true);
+      
+      // Start continuous audio generation for the sequencer
+      generateContinuousAudio();
+      
       console.log("Audio started!");
     } catch (error) {
       console.error("Failed to start audio:", error);
@@ -157,8 +209,24 @@ export default function WasmTest() {
 
   function stopAudio() {
     setIsPlaying(false);
+    
+    // Stop continuous audio generation
+    if (audioGenerationRef.current) {
+      clearTimeout(audioGenerationRef.current);
+      audioGenerationRef.current = null;
+    }
+    
     console.log("Audio stopped!");
   }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioGenerationRef.current) {
+        clearTimeout(audioGenerationRef.current);
+      }
+    };
+  }, []);
 
   function triggerAll() {
     if (!audioContextRef.current || !stageRef.current || !isPlaying) {
@@ -2067,7 +2135,6 @@ export default function WasmTest() {
               ref={spectrumAnalyzerRef}
               audioContext={audioContextRef.current}
               isActive={isPlaying}
-              width={600}
               height={200}
             />
           </div>

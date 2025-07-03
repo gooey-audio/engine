@@ -10,9 +10,10 @@ interface SpectrumAnalyzerProps {
   analyser?: AnalyserNode | null;
 }
 
-export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, height = 200, analyser }: SpectrumAnalyzerProps) {
+export default function SpectrumAnalyzer({ audioContext, isActive, width, height = 200, analyser }: SpectrumAnalyzerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const [canvasWidth, setCanvasWidth] = useState(width || 800);
 
   // Use the passed analyser directly
   useEffect(() => {
@@ -20,6 +21,28 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
       console.log('Spectrum analyzer using external analyser node');
     }
   }, [analyser]);
+
+  // Handle responsive width when no width prop is provided
+  useEffect(() => {
+    if (width) {
+      setCanvasWidth(width);
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        const { width: observedWidth } = entry.contentRect;
+        setCanvasWidth(Math.floor(observedWidth));
+      }
+    });
+
+    resizeObserver.observe(canvas.parentElement!);
+
+    return () => resizeObserver.disconnect();
+  }, [width]);
 
   // Animation loop for drawing the spectrum
   useEffect(() => {
@@ -44,10 +67,10 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
 
       // Clear canvas
       canvasContext.fillStyle = 'rgb(30, 30, 30)';
-      canvasContext.fillRect(0, 0, width, height);
+      canvasContext.fillRect(0, 0, canvasWidth, height);
 
       // Draw frequency bars
-      const barWidth = width / bufferLength * 2.5;
+      const barWidth = canvasWidth / bufferLength * 2.5;
       let x = 0;
 
       // Calculate frequency labels
@@ -78,7 +101,7 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
       const frequencies = [100, 500, 1000, 2000, 5000, 10000];
       frequencies.forEach(freq => {
         if (freq < nyquist) {
-          const x = (freq / nyquist) * (width / 2.5);
+          const x = (freq / nyquist) * (canvasWidth / 2.5);
           canvasContext.fillText(`${freq}Hz`, x, height - 5);
           
           // Draw frequency line
@@ -103,7 +126,7 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
         canvasContext.lineWidth = 1;
         canvasContext.beginPath();
         canvasContext.moveTo(40, y);
-        canvasContext.lineTo(width, y);
+        canvasContext.lineTo(canvasWidth, y);
         canvasContext.stroke();
       }
 
@@ -117,7 +140,7 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isActive, width, height, analyser]);
+  }, [isActive, canvasWidth, height, analyser]);
 
   return (
     <div className="spectrum-analyzer-container bg-gray-800 p-4 rounded-lg border border-gray-600">
@@ -133,7 +156,7 @@ export default function SpectrumAnalyzer({ audioContext, isActive, width = 800, 
       
       <canvas
         ref={canvasRef}
-        width={width}
+        width={canvasWidth}
         height={height}
         className="w-full border border-gray-500 rounded bg-gray-900"
         style={{ maxWidth: '100%', height: 'auto' }}
