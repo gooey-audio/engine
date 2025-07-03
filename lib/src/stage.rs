@@ -5,6 +5,24 @@ pub struct Stage {
     pub sample_rate: f32,
     pub instruments: Vec<Oscillator>,
     pub limiter: BrickWallLimiter,
+    pub sequencer: Sequencer,
+}
+
+/// A 16-step drum sequencer that manages pattern playback for multiple instruments
+#[derive(Debug, Clone)]
+pub struct Sequencer {
+    /// 16-step patterns for each instrument (4 instruments, 16 steps each)
+    patterns: [[bool; 16]; 4],
+    /// Current step (0-15)
+    current_step: usize,
+    /// Whether the sequencer is playing
+    is_playing: bool,
+    /// BPM (beats per minute)
+    bpm: f32,
+    /// Time of the last step in seconds
+    last_step_time: f32,
+    /// Time interval between steps in seconds
+    step_interval: f32,
 }
 
 impl Stage {
@@ -13,6 +31,7 @@ impl Stage {
             sample_rate,
             instruments: Vec::new(),
             limiter: BrickWallLimiter::new(1.0), // Default threshold at 1.0 to prevent clipping
+            sequencer: Sequencer::new(),
         }
     }
 
@@ -23,6 +42,27 @@ impl Stage {
     }
 
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        // Update sequencer and trigger instruments if needed
+        if self.sequencer.is_playing {
+            self.sequencer.update(current_time);
+            
+            // Check if we should trigger instruments on the current step
+            if self.sequencer.should_trigger_step(current_time) {
+                let current_step = self.sequencer.current_step;
+                
+                // Trigger instruments that have a hit on the current step
+                for (instrument_index, pattern) in self.sequencer.patterns.iter().enumerate() {
+                    if pattern[current_step] && instrument_index < self.instruments.len() {
+                        self.trigger_instrument(instrument_index, current_time);
+                    }
+                }
+                
+                // Mark that we've processed this step
+                self.sequencer.last_step_time = current_time;
+                self.sequencer.advance_step();
+            }
+        }
+        
         let mut output = 0.0;
         for instrument in &mut self.instruments {
             output += instrument.tick(current_time);
@@ -139,6 +179,123 @@ impl Stage {
     /// Get the current limiter threshold
     pub fn get_limiter_threshold(&self) -> f32 {
         self.limiter.threshold
+    }
+
+    // Sequencer control methods
+    
+    /// Start the sequencer
+    pub fn sequencer_play(&mut self) {
+        self.sequencer.play();
+    }
+    
+    /// Stop the sequencer
+    pub fn sequencer_stop(&mut self) {
+        self.sequencer.stop();
+    }
+    
+    /// Reset the sequencer to step 0
+    pub fn sequencer_reset(&mut self) {
+        self.sequencer.reset();
+    }
+    
+    /// Clear all patterns
+    pub fn sequencer_clear_all(&mut self) {
+        self.sequencer.clear_all();
+    }
+    
+    /// Set a step for a specific instrument
+    pub fn sequencer_set_step(&mut self, instrument: usize, step: usize, enabled: bool) {
+        self.sequencer.set_step(instrument, step, enabled);
+    }
+    
+    /// Get a step for a specific instrument
+    pub fn sequencer_get_step(&self, instrument: usize, step: usize) -> bool {
+        self.sequencer.get_step(instrument, step)
+    }
+    
+    /// Set the BPM
+    pub fn sequencer_set_bpm(&mut self, bpm: f32) {
+        self.sequencer.set_bpm(bpm);
+    }
+    
+    /// Get the current BPM
+    pub fn sequencer_get_bpm(&self) -> f32 {
+        self.sequencer.bpm
+    }
+    
+    /// Get the current step (0-15)
+    pub fn sequencer_get_current_step(&self) -> usize {
+        self.sequencer.current_step
+    }
+    
+    /// Check if the sequencer is playing
+    pub fn sequencer_is_playing(&self) -> bool {
+        self.sequencer.is_playing
+    }
+}
+
+impl Sequencer {
+    pub fn new() -> Self {
+        Self {
+            patterns: [[false; 16]; 4],
+            current_step: 0,
+            is_playing: false,
+            bpm: 120.0,
+            last_step_time: 0.0,
+            step_interval: 60.0 / (120.0 * 4.0), // 16th notes at 120 BPM
+        }
+    }
+    
+    pub fn play(&mut self) {
+        self.is_playing = true;
+    }
+    
+    pub fn stop(&mut self) {
+        self.is_playing = false;
+    }
+    
+    pub fn reset(&mut self) {
+        self.current_step = 0;
+        self.last_step_time = 0.0;
+    }
+    
+    pub fn clear_all(&mut self) {
+        self.patterns = [[false; 16]; 4];
+    }
+    
+    pub fn set_step(&mut self, instrument: usize, step: usize, enabled: bool) {
+        if instrument < 4 && step < 16 {
+            self.patterns[instrument][step] = enabled;
+        }
+    }
+    
+    pub fn get_step(&self, instrument: usize, step: usize) -> bool {
+        if instrument < 4 && step < 16 {
+            self.patterns[instrument][step]
+        } else {
+            false
+        }
+    }
+    
+    pub fn set_bpm(&mut self, bpm: f32) {
+        // Clamp BPM to reasonable range
+        self.bpm = bpm.max(60.0).min(180.0);
+        // Recalculate step interval (16th notes)
+        self.step_interval = 60.0 / (self.bpm * 4.0);
+    }
+    
+    pub fn update(&mut self, current_time: f32) {
+        // This method is called from tick() to update internal state
+        // The actual triggering logic is handled in tick()
+    }
+    
+    pub fn should_trigger_step(&self, current_time: f32) -> bool {
+        // Check if enough time has passed for the next step
+        current_time - self.last_step_time >= self.step_interval
+    }
+    
+    pub fn advance_step(&mut self) {
+        self.current_step = (self.current_step + 1) % 16;
     }
 }
 

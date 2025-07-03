@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import init, { WasmStage, WasmKickDrum, WasmHiHat, WasmSnareDrum, WasmTomDrum } from '../public/wasm/oscillator.js';
 import { SpectrumAnalyzerWithRef } from './spectrum-analyzer';
+import Sequencer from './sequencer';
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
@@ -1964,6 +1965,12 @@ export default function WasmTest() {
               height={200}
             />
           </div>
+
+          {/* Sequencer */}
+          <Sequencer
+            stage={stageRef.current}
+            isPlaying={isPlaying}
+          />
           
           <div className="p-4 bg-gray-800 rounded">
             <h2 className="font-semibold mb-2">Status:</h2>

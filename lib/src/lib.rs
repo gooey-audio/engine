@@ -193,6 +193,58 @@ pub mod web {
         pub fn is_instrument_enabled(&self, index: usize) -> bool {
             self.stage.is_instrument_enabled(index)
         }
+
+        // Sequencer methods
+        
+        #[wasm_bindgen]
+        pub fn sequencer_play(&mut self) {
+            self.stage.sequencer_play();
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_stop(&mut self) {
+            self.stage.sequencer_stop();
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_reset(&mut self) {
+            self.stage.sequencer_reset();
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_clear_all(&mut self) {
+            self.stage.sequencer_clear_all();
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_set_step(&mut self, instrument: usize, step: usize, enabled: bool) {
+            self.stage.sequencer_set_step(instrument, step, enabled);
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_get_step(&self, instrument: usize, step: usize) -> bool {
+            self.stage.sequencer_get_step(instrument, step)
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_set_bpm(&mut self, bpm: f32) {
+            self.stage.sequencer_set_bpm(bpm);
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_get_bpm(&self) -> f32 {
+            self.stage.sequencer_get_bpm()
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_get_current_step(&self) -> usize {
+            self.stage.sequencer_get_current_step()
+        }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_is_playing(&self) -> bool {
+            self.stage.sequencer_is_playing()
+        }
     }
 
     #[wasm_bindgen]
