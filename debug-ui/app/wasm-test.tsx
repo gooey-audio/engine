@@ -66,6 +66,62 @@ export default function WasmTest() {
     volume: 0.8,
   });
 
+  // Keyboard mapping state
+  const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
+  const [keyboardEnabled, setKeyboardEnabled] = useState(true);
+
+  // Keyboard mapping configuration
+  const keyMappings = {
+    'a': { name: 'Kick Drum', action: () => triggerKickDrum(), color: 'bg-red-500', emoji: '🥁' },
+    's': { name: 'Snare Drum', action: () => triggerSnareDrum(), color: 'bg-orange-500', emoji: '🥁' },
+    'd': { name: 'Hi-Hat', action: () => triggerHiHat(), color: 'bg-yellow-500', emoji: '🔔' },
+    'f': { name: 'Cymbal', action: () => triggerInstrument(3, 'Cymbal'), color: 'bg-cyan-500', emoji: '🥽' }
+  };
+
+  // Keyboard event handlers
+  React.useEffect(() => {
+    if (!keyboardEnabled) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      
+      // Prevent default behavior for our mapped keys
+      if (key in keyMappings) {
+        event.preventDefault();
+        
+        // Only trigger if not already pressed (prevent key repeat)
+        if (!pressedKeys.has(key)) {
+          setPressedKeys(prev => new Set(prev).add(key));
+          keyMappings[key as keyof typeof keyMappings].action();
+          console.log(`Keyboard trigger: ${key.toUpperCase()} -> ${keyMappings[key as keyof typeof keyMappings].name}`);
+        }
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      
+      if (key in keyMappings) {
+        event.preventDefault();
+        setPressedKeys(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(key);
+          return newSet;
+        });
+      }
+    };
+
+    // Add global event listeners
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [keyboardEnabled, pressedKeys, isLoaded, isPlaying]);
+
   async function loadWasm() {
     setIsLoading(true);
     try {
@@ -789,6 +845,59 @@ export default function WasmTest() {
         >
           {isPlaying ? 'Stop Audio' : 'Start Audio'}
         </button>
+        
+        {/* Keyboard Mapping Widget */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-lg">⌨️ Keyboard Mapping</h3>
+            <button
+              onClick={() => setKeyboardEnabled(!keyboardEnabled)}
+              className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                keyboardEnabled
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-red-600 text-white hover:bg-red-700'
+              }`}
+            >
+              {keyboardEnabled ? '🔊 ON' : '🔇 OFF'}
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {Object.entries(keyMappings).map(([key, mapping]) => (
+              <div
+                key={key}
+                className={`p-3 rounded-lg border-2 transition-all duration-150 ${
+                  pressedKeys.has(key)
+                    ? `${mapping.color} border-white scale-95 shadow-lg`
+                    : 'bg-gray-800 border-gray-600 hover:border-gray-500'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-2xl">{mapping.emoji}</span>
+                    <div>
+                      <div className="text-sm font-medium">{mapping.name}</div>
+                      <div className="text-xs text-gray-400">Press {key.toUpperCase()}</div>
+                    </div>
+                  </div>
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm transition-colors ${
+                      pressedKeys.has(key)
+                        ? 'bg-white text-gray-900'
+                        : 'bg-gray-700 text-white'
+                    }`}
+                  >
+                    {key.toUpperCase()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-xs text-gray-400 mb-2">
+            💡 Click anywhere on the page to ensure keyboard focus, then press A, S, D, or F to trigger instruments
+          </div>
+        </div>
         
         {/* Tab Navigation */}
         <div className="border-t pt-4">
@@ -1696,6 +1805,16 @@ export default function WasmTest() {
         <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
           <li>Click "Load Audio Engine" to initialize the WASM Stage with 4 oscillators, kick drum, hi-hat, and snare</li>
           <li>Click "Start Audio" to begin audio processing</li>
+          <li><strong>🎹 Keyboard Mapping:</strong> Use keyboard shortcuts for quick testing:
+            <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200 mt-1">
+              <li><strong>A</strong> → Trigger Kick Drum</li>
+              <li><strong>S</strong> → Trigger Snare Drum</li>
+              <li><strong>D</strong> → Trigger Hi-Hat</li>
+              <li><strong>F</strong> → Trigger Cymbal</li>
+              <li>Toggle keyboard mapping on/off with the ON/OFF button</li>
+              <li>Visual feedback shows which keys are currently pressed</li>
+            </ul>
+          </li>
           <li>Use individual instrument buttons to test single oscillators</li>
           <li>Adjust instrument controls for each oscillator:</li>
           <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
