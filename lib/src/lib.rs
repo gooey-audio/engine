@@ -5,6 +5,7 @@ pub mod envelope;
 pub mod hihat;
 pub mod kick;
 pub mod oscillator;
+pub mod snare;
 pub mod stage;
 pub mod waveform;
 
@@ -15,6 +16,7 @@ pub mod web {
     use super::hihat::{HiHat, HiHatConfig};
     use super::kick::{KickConfig, KickDrum};
     use super::oscillator::Oscillator;
+    use super::snare::{SnareConfig, SnareDrum};
     use super::stage::Stage;
     use wasm_bindgen::prelude::*;
 
@@ -417,6 +419,113 @@ pub mod web {
                 is_open,
             );
             self.hihat.set_config(config);
+        }
+    }
+
+    #[wasm_bindgen]
+    pub struct WasmSnareDrum {
+        snare_drum: SnareDrum,
+    }
+
+    #[wasm_bindgen]
+    impl WasmSnareDrum {
+        #[wasm_bindgen(constructor)]
+        pub fn new(sample_rate: f32) -> WasmSnareDrum {
+            WasmSnareDrum {
+                snare_drum: SnareDrum::new(sample_rate),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn new_with_preset(sample_rate: f32, preset_name: &str) -> WasmSnareDrum {
+            let config = match preset_name {
+                "crispy" => SnareConfig::crispy(),
+                "deep" => SnareConfig::deep(),
+                "tight" => SnareConfig::tight(),
+                "fat" => SnareConfig::fat(),
+                _ => SnareConfig::default(),
+            };
+            WasmSnareDrum {
+                snare_drum: SnareDrum::with_config(sample_rate, config),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn trigger(&mut self, time: f32) {
+            self.snare_drum.trigger(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn release(&mut self, time: f32) {
+            self.snare_drum.release(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn tick(&mut self, current_time: f32) -> f32 {
+            self.snare_drum.tick(current_time)
+        }
+
+        #[wasm_bindgen]
+        pub fn is_active(&self) -> bool {
+            self.snare_drum.is_active()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_volume(&mut self, volume: f32) {
+            self.snare_drum.set_volume(volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_frequency(&mut self, frequency: f32) {
+            self.snare_drum.set_frequency(frequency);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_decay(&mut self, decay_time: f32) {
+            self.snare_drum.set_decay(decay_time);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_tonal(&mut self, tonal_amount: f32) {
+            self.snare_drum.set_tonal(tonal_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_noise(&mut self, noise_amount: f32) {
+            self.snare_drum.set_noise(noise_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_crack(&mut self, crack_amount: f32) {
+            self.snare_drum.set_crack(crack_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_pitch_drop(&mut self, pitch_drop: f32) {
+            self.snare_drum.set_pitch_drop(pitch_drop);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_config(
+            &mut self,
+            snare_frequency: f32,
+            tonal_amount: f32,
+            noise_amount: f32,
+            crack_amount: f32,
+            decay_time: f32,
+            pitch_drop: f32,
+            volume: f32,
+        ) {
+            let config = SnareConfig::new(
+                snare_frequency,
+                tonal_amount,
+                noise_amount,
+                crack_amount,
+                decay_time,
+                pitch_drop,
+                volume,
+            );
+            self.snare_drum.set_config(config);
         }
     }
 }
