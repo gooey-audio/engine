@@ -13,6 +13,7 @@ export default function WasmTest() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [activeTab, setActiveTab] = useState<'oscillators' | 'kick' | 'hihat'>('oscillators');
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
   const [modulatorFrequencies, setModulatorFrequencies] = useState([100, 150, 220, 300]); // Modulator frequency for each instrument (for ring modulation)
@@ -608,8 +609,45 @@ export default function WasmTest() {
           {isPlaying ? 'Stop Audio' : 'Start Audio'}
         </button>
         
+        {/* Tab Navigation */}
         <div className="border-t pt-4">
-          <h3 className="font-semibold mb-3 text-center">Instrument Controls</h3>
+          <div className="flex space-x-1 mb-6">
+            <button
+              onClick={() => setActiveTab('oscillators')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'oscillators'
+                  ? 'bg-blue-600 text-white border-b-2 border-blue-600'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              🎵 Oscillators
+            </button>
+            <button
+              onClick={() => setActiveTab('kick')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'kick'
+                  ? 'bg-red-600 text-white border-b-2 border-red-600'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              🥁 Kick Drum
+            </button>
+            <button
+              onClick={() => setActiveTab('hihat')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'hihat'
+                  ? 'bg-yellow-600 text-white border-b-2 border-yellow-600'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              🔔 Hi-Hat
+            </button>
+          </div>
+          
+          {/* Tab Content */}
+          {activeTab === 'oscillators' && (
+            <div>
+              <h3 className="font-semibold mb-3 text-center">Instrument Controls</h3>
           
           <button
             onClick={triggerAll}
@@ -850,10 +888,13 @@ export default function WasmTest() {
           >
             Release All Instruments
           </button>
+            </div>
+          )}
 
-          {/* Kick Drum Section */}
-          <div className="mt-8 pt-6 border-t border-gray-600">
-            <h3 className="font-semibold mb-4 text-center text-lg">🥁 Kick Drum</h3>
+          {/* Kick Drum Tab */}
+          {activeTab === 'kick' && (
+            <div>
+              <h3 className="font-semibold mb-4 text-center text-lg">🥁 Kick Drum</h3>
             
             {/* Kick Drum Trigger Button */}
             <button
@@ -1017,10 +1058,12 @@ export default function WasmTest() {
             >
               Release Kick
             </button>
-          </div>
+            </div>
+          )}
 
-          {/* Hi-Hat Section */}
-          <div className="mt-8 pt-6 border-t border-gray-600">
+          {/* Hi-Hat Tab */}
+          {activeTab === 'hihat' && (
+            <div>
             <h3 className="font-semibold mb-4 text-center text-lg">🔔 Hi-Hat</h3>
             
             {/* Hi-Hat Preset Buttons */}
@@ -1230,7 +1273,8 @@ export default function WasmTest() {
             >
               Release Hi-Hat
             </button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
       
