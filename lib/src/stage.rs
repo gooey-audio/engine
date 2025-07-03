@@ -193,6 +193,11 @@ impl Stage {
     pub fn sequencer_play(&mut self) {
         self.sequencer.play();
     }
+    
+    /// Start the sequencer with a specific time
+    pub fn sequencer_play_at_time(&mut self, time: f32) {
+        self.sequencer.play_at_time(time);
+    }
 
     /// Stop the sequencer
     pub fn sequencer_stop(&mut self) {
@@ -254,6 +259,11 @@ impl Sequencer {
 
     pub fn play(&mut self) {
         self.is_playing = true;
+    }
+    
+    pub fn play_at_time(&mut self, time: f32) {
+        self.is_playing = true;
+        self.last_step_time = time;
     }
 
     pub fn stop(&mut self) {

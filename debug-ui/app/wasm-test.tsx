@@ -17,6 +17,7 @@ export default function WasmTest() {
   const snareAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const tomAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const spectrumAnalyzerRef = useRef<{ connectSource: (source: AudioNode) => void; getAnalyser: () => AnalyserNode | null; getMonitoringNode: () => GainNode | null } | null>(null);
+  const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -142,8 +143,34 @@ export default function WasmTest() {
         await audioContextRef.current.resume();
       }
       
+      // Create a continuous audio processing loop using ScriptProcessorNode
+      // This is needed for the sequencer to advance through steps
+      const bufferSize = 4096;
+      const processor = audioContextRef.current.createScriptProcessor(bufferSize, 0, 1);
+      audioProcessorRef.current = processor;
+      
+      processor.onaudioprocess = (event) => {
+        if (!stageRef.current || !audioContextRef.current) return;
+        
+        const outputBuffer = event.outputBuffer;
+        const outputData = outputBuffer.getChannelData(0);
+        
+        // Process audio samples continuously
+        for (let i = 0; i < outputBuffer.length; i++) {
+          const currentTime = audioContextRef.current.currentTime + (i / audioContextRef.current.sampleRate);
+          outputData[i] = stageRef.current.tick(currentTime);
+        }
+      };
+      
+      // Connect the processor to the audio graph
+      if (spectrumAnalyzerRef.current && spectrumAnalyzerRef.current.getMonitoringNode()) {
+        processor.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        processor.connect(audioContextRef.current.destination);
+      }
+      
       setIsPlaying(true);
-      console.log('Audio started!');
+      console.log('Audio started with continuous processing!');
     } catch (error) {
       console.error('Failed to start audio:', error);
       alert('Failed to start audio');
@@ -151,6 +178,12 @@ export default function WasmTest() {
   }
 
   function stopAudio() {
+    // Disconnect the audio processor
+    if (audioProcessorRef.current) {
+      audioProcessorRef.current.disconnect();
+      audioProcessorRef.current = null;
+    }
+    
     setIsPlaying(false);
     console.log('Audio stopped!');
   }
@@ -1970,6 +2003,7 @@ export default function WasmTest() {
           <Sequencer
             stage={stageRef.current}
             isPlaying={isPlaying}
+            audioContext={audioContextRef.current}
           />
           
           <div className="p-4 bg-gray-800 rounded">
