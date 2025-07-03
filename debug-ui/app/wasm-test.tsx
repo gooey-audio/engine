@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import init, { WasmStage, WasmKickDrum, WasmHiHat } from '../public/wasm/oscillator.js';
 import { SpectrumAnalyzerWithRef } from './spectrum-analyzer';
+import Sequencer from './sequencer';
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
@@ -1306,7 +1307,7 @@ export default function WasmTest() {
         </div>
         </div>
         
-        {/* Right Column - Spectrum Analyzer and Status */}
+        {/* Right Column - Spectrum Analyzer, Sequencer, and Status */}
         <div className="space-y-4">
           {/* Spectrum Analyzer */}
           <div className="sticky top-4">
@@ -1318,6 +1319,13 @@ export default function WasmTest() {
               height={200}
             />
           </div>
+
+          {/* Sequencer */}
+          <Sequencer
+            stageRef={stageRef}
+            isLoaded={isLoaded}
+            isPlaying={isPlaying}
+          />
           
           <div className="p-4 bg-gray-800 rounded">
             <h2 className="font-semibold mb-2">Status:</h2>
@@ -1349,6 +1357,10 @@ export default function WasmTest() {
           <li>• <strong>Hi-Hat Instrument</strong>: Noise-based hi-hat with dual oscillators and envelope control</li>
           <li>• <strong>Hi-Hat Presets</strong>: 6 built-in presets (Closed Default, Open Default, Closed Tight, Open Bright, Closed Dark, Open Long)</li>
           <li>• <strong>Hi-Hat Parameters</strong>: Base frequency, resonance, brightness, decay time, attack time, volume, and open/closed mode</li>
+          <li>• <strong>16-Step Sequencer</strong>: Automated pattern playback with real-time step programming</li>
+          <li>• <strong>Sequencer Controls</strong>: Play/Stop, Reset, Clear All, BPM control (60-180), and real-time pattern editing</li>
+          <li>• <strong>Pattern Programming</strong>: Individual step control for each of the 4 instruments with 16 steps per pattern</li>
+          <li>• <strong>Visual Feedback</strong>: Real-time current step indicator with pulse animation during playback</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
         </ul>
       </div>
@@ -1397,6 +1409,16 @@ export default function WasmTest() {
             <li><strong>Decay Time:</strong> Control how long the hi-hat rings out</li>
             <li><strong>Attack Time:</strong> Adjust the initial transient speed</li>
             <li><strong>Open/Closed Toggle:</strong> Switch between open and closed hi-hat modes</li>
+          </ul>
+          <li>Use the 16-step sequencer for automated pattern playback:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Pattern Programming:</strong> Click grid squares to enable/disable steps for each instrument</li>
+            <li><strong>Transport Controls:</strong> Use Play/Stop to control automated playback</li>
+            <li><strong>BPM Control:</strong> Adjust tempo from 60-180 BPM using the slider</li>
+            <li><strong>Reset:</strong> Return to step 1 without stopping playback</li>
+            <li><strong>Clear All:</strong> Remove all programmed steps from all instruments</li>
+            <li><strong>Real-time Editing:</strong> Add or remove steps while the sequencer is playing</li>
+            <li><strong>Visual Feedback:</strong> Watch the current step indicator pulse through the pattern</li>
           </ul>
         </ol>
       </div>
