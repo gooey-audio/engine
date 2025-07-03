@@ -7,6 +7,7 @@ pub mod kick;
 pub mod oscillator;
 pub mod snare;
 pub mod stage;
+pub mod tom;
 pub mod waveform;
 
 // WASM bindings (web)
@@ -18,6 +19,7 @@ pub mod web {
     use super::oscillator::Oscillator;
     use super::snare::{SnareConfig, SnareDrum};
     use super::stage::Stage;
+    use super::tom::{TomConfig, TomDrum};
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -526,6 +528,106 @@ pub mod web {
                 volume,
             );
             self.snare_drum.set_config(config);
+        }
+    }
+
+    #[wasm_bindgen]
+    pub struct WasmTomDrum {
+        tom_drum: TomDrum,
+    }
+
+    #[wasm_bindgen]
+    impl WasmTomDrum {
+        #[wasm_bindgen(constructor)]
+        pub fn new(sample_rate: f32) -> WasmTomDrum {
+            WasmTomDrum {
+                tom_drum: TomDrum::new(sample_rate),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn new_with_preset(sample_rate: f32, preset_name: &str) -> WasmTomDrum {
+            let config = match preset_name {
+                "high_tom" => TomConfig::high_tom(),
+                "mid_tom" => TomConfig::mid_tom(),
+                "low_tom" => TomConfig::low_tom(),
+                "floor_tom" => TomConfig::floor_tom(),
+                _ => TomConfig::default(),
+            };
+            WasmTomDrum {
+                tom_drum: TomDrum::with_config(sample_rate, config),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn trigger(&mut self, time: f32) {
+            self.tom_drum.trigger(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn release(&mut self, time: f32) {
+            self.tom_drum.release(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn tick(&mut self, current_time: f32) -> f32 {
+            self.tom_drum.tick(current_time)
+        }
+
+        #[wasm_bindgen]
+        pub fn is_active(&self) -> bool {
+            self.tom_drum.is_active()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_volume(&mut self, volume: f32) {
+            self.tom_drum.set_volume(volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_frequency(&mut self, frequency: f32) {
+            self.tom_drum.set_frequency(frequency);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_decay(&mut self, decay_time: f32) {
+            self.tom_drum.set_decay(decay_time);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_tonal(&mut self, tonal_amount: f32) {
+            self.tom_drum.set_tonal(tonal_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_punch(&mut self, punch_amount: f32) {
+            self.tom_drum.set_punch(punch_amount);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_pitch_drop(&mut self, pitch_drop: f32) {
+            self.tom_drum.set_pitch_drop(pitch_drop);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_config(
+            &mut self,
+            tom_frequency: f32,
+            tonal_amount: f32,
+            punch_amount: f32,
+            decay_time: f32,
+            pitch_drop: f32,
+            volume: f32,
+        ) {
+            let config = TomConfig::new(
+                tom_frequency,
+                tonal_amount,
+                punch_amount,
+                decay_time,
+                pitch_drop,
+                volume,
+            );
+            self.tom_drum.set_config(config);
         }
     }
 }
