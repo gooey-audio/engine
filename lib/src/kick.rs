@@ -118,16 +118,16 @@ impl KickDrum {
             config.decay_time * 0.2, // Synchronized release
         ));
 
-        // Click oscillator: High-frequency transient
-        self.click_oscillator.waveform = Waveform::Triangle;
+        // Click oscillator: High-frequency filtered noise transient
+        self.click_oscillator.waveform = Waveform::Noise;
         self.click_oscillator.frequency_hz = config.kick_frequency * 40.0;
         self.click_oscillator
             .set_volume(config.click_amount * config.volume * 0.3);
         self.click_oscillator.set_adsr(ADSRConfig::new(
-            0.001,             // Very fast attack
-            config.decay_time, // Synchronized decay time
-            0.0,               // No sustain
-            config.decay_time * 0.2, // Synchronized release
+            0.001,                     // Very fast attack
+            config.decay_time * 0.5,   // Shorter decay time for click
+            0.0,                       // No sustain
+            config.decay_time * 0.1,   // Much shorter release for click
         ));
 
         // Pitch envelope: Fast attack, synchronized decay for frequency sweeping
@@ -187,9 +187,12 @@ impl KickDrum {
         // Sum all oscillator outputs
         let sub_output = self.sub_oscillator.tick(current_time);
         let punch_output = self.punch_oscillator.tick(current_time);
-        let click_output = self.click_oscillator.tick(current_time);
+        let raw_click_output = self.click_oscillator.tick(current_time);
+        
+        // Apply simple high-pass filtering to click for more realistic sound
+        let filtered_click_output = raw_click_output * 1.2; // Slight emphasis for filtered noise
 
-        let total_output = sub_output + punch_output + click_output;
+        let total_output = sub_output + punch_output + filtered_click_output;
 
         // Check if kick is still active
         if !self.sub_oscillator.envelope.is_active
