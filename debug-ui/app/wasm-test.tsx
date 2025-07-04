@@ -118,10 +118,10 @@ export default function WasmTest() {
       emoji: "🔔",
     },
     f: {
-      name: "Cymbal",
-      action: () => triggerInstrument(3, "Cymbal"),
-      color: "bg-cyan-500",
-      emoji: "🥽",
+      name: "Tom Drum",
+      action: () => triggerTomDrum(),
+      color: "bg-purple-500",
+      emoji: "🥁",
     },
   };
 
