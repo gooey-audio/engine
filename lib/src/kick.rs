@@ -130,12 +130,12 @@ impl KickDrum {
             config.decay_time * 0.2, // Synchronized release
         ));
 
-        // Pitch envelope: Fast attack, medium decay for frequency sweeping
+        // Pitch envelope: Fast attack, synchronized decay for frequency sweeping
         self.pitch_envelope.set_config(ADSRConfig::new(
-            0.001,                   // Instant attack
-            config.decay_time * 0.3, // Quick pitch drop
-            0.0,                     // Drop to base frequency
-            config.decay_time * 0.1, // Quick release
+            0.001,             // Instant attack
+            config.decay_time, // Synchronized decay time
+            0.0,               // Drop to base frequency
+            config.decay_time * 0.2, // Synchronized release
         ));
     }
 
