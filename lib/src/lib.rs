@@ -1,6 +1,7 @@
 //! Shared audio engine logic for both native (CPAL) and WASM (web)
 
 pub mod audio_state;
+pub mod effects;
 pub mod envelope;
 pub mod hihat;
 pub mod kick;
@@ -299,6 +300,26 @@ pub mod web {
             );
             self.kick_drum.set_config(config);
         }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_enabled(&mut self, enabled: bool) {
+            self.kick_drum.set_distortion_enabled(enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_distortion_enabled(&self) -> bool {
+            self.kick_drum.is_distortion_enabled()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_drive(&mut self, drive: f32) {
+            self.kick_drum.set_distortion_drive(drive);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_output_gain(&mut self, gain: f32) {
+            self.kick_drum.set_distortion_output_gain(gain);
+        }
     }
 
     #[wasm_bindgen]
@@ -422,6 +443,26 @@ pub mod web {
             );
             self.hihat.set_config(config);
         }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_enabled(&mut self, enabled: bool) {
+            self.hihat.set_distortion_enabled(enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_distortion_enabled(&self) -> bool {
+            self.hihat.is_distortion_enabled()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_drive(&mut self, drive: f32) {
+            self.hihat.set_distortion_drive(drive);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_output_gain(&mut self, gain: f32) {
+            self.hihat.set_distortion_output_gain(gain);
+        }
     }
 
     #[wasm_bindgen]
@@ -529,6 +570,26 @@ pub mod web {
             );
             self.snare_drum.set_config(config);
         }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_enabled(&mut self, enabled: bool) {
+            self.snare_drum.set_distortion_enabled(enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_distortion_enabled(&self) -> bool {
+            self.snare_drum.is_distortion_enabled()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_drive(&mut self, drive: f32) {
+            self.snare_drum.set_distortion_drive(drive);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_output_gain(&mut self, gain: f32) {
+            self.snare_drum.set_distortion_output_gain(gain);
+        }
     }
 
     #[wasm_bindgen]
@@ -628,6 +689,26 @@ pub mod web {
                 volume,
             );
             self.tom_drum.set_config(config);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_enabled(&mut self, enabled: bool) {
+            self.tom_drum.set_distortion_enabled(enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_distortion_enabled(&self) -> bool {
+            self.tom_drum.is_distortion_enabled()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_drive(&mut self, drive: f32) {
+            self.tom_drum.set_distortion_drive(drive);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_distortion_output_gain(&mut self, gain: f32) {
+            self.tom_drum.set_distortion_output_gain(gain);
         }
     }
 }
