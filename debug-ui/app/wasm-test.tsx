@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import init, { WasmStage, WasmKickDrum, WasmHiHat, WasmSnareDrum } from '../public/wasm/oscillator.js';
+import init, { WasmStage, WasmKickDrum, WasmHiHat, WasmSnareDrum, WasmTomDrum } from '../public/wasm/oscillator.js';
 import { SpectrumAnalyzerWithRef } from './spectrum-analyzer';
 
 export default function WasmTest() {
@@ -9,15 +9,17 @@ export default function WasmTest() {
   const kickDrumRef = useRef<WasmKickDrum | null>(null);
   const hihatRef = useRef<WasmHiHat | null>(null);
   const snareRef = useRef<WasmSnareDrum | null>(null);
+  const tomRef = useRef<WasmTomDrum | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const kickAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const hihatAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const snareAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const tomAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const spectrumAnalyzerRef = useRef<{ connectSource: (source: AudioNode) => void; getAnalyser: () => AnalyserNode | null; getMonitoringNode: () => GainNode | null } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [activeTab, setActiveTab] = useState<'oscillators' | 'kick' | 'hihat' | 'snare'>('oscillators');
+  const [activeTab, setActiveTab] = useState<'oscillators' | 'kick' | 'hihat' | 'snare' | 'tom'>('oscillators');
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
   const [modulatorFrequencies, setModulatorFrequencies] = useState([100, 150, 220, 300]); // Modulator frequency for each instrument (for ring modulation)
@@ -62,6 +64,17 @@ export default function WasmTest() {
     noise: 0.7,
     crack: 0.5,
     decay: 0.15,
+    pitchDrop: 0.3,
+    volume: 0.8,
+  });
+
+  // Tom specific state
+  const [tomPreset, setTomPreset] = useState('default');
+  const [tomConfig, setTomConfig] = useState({
+    frequency: 120.0,
+    tonal: 0.8,
+    punch: 0.4,
+    decay: 0.4,
     pitchDrop: 0.3,
     volume: 0.8,
   });
@@ -156,11 +169,14 @@ export default function WasmTest() {
       // Create snare instance
       snareRef.current = new WasmSnareDrum(44100);
       
+      // Create tom instance
+      tomRef.current = new WasmTomDrum(44100);
+      
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
       
       setIsLoaded(true);
-      console.log('WASM Stage with 4 oscillators, kick drum, hi-hat, snare, and Web Audio loaded successfully!');
+      console.log('WASM Stage with 4 oscillators, kick drum, hi-hat, snare, tom, and Web Audio loaded successfully!');
     } catch (error) {
       console.error('Failed to load WASM:', error);
       alert('Failed to load WASM module: ' + String(error));
@@ -823,6 +839,139 @@ export default function WasmTest() {
     }
   }
 
+  // Tom drum functions
+  function triggerTomDrum() {
+    if (!audioContextRef.current || !tomRef.current || !isPlaying) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      // Stop any existing tom sound
+      if (tomAudioSourceRef.current) {
+        try {
+          tomAudioSourceRef.current.stop();
+        } catch (e) {
+          // Source might already be stopped, ignore error
+        }
+        tomAudioSourceRef.current = null;
+      }
+      
+      // Trigger tom
+      const currentTime = audioContextRef.current.currentTime;
+      tomRef.current.trigger(currentTime);
+      
+      // Generate audio buffer (2 seconds for tom sounds)
+      const sampleRate = audioContextRef.current.sampleRate;
+      const bufferLength = sampleRate * 2; // 2 seconds
+      const audioBuffer = audioContextRef.current.createBuffer(1, bufferLength, sampleRate);
+      
+      // Get the channel data and fill it with WASM-generated samples
+      const channelData = audioBuffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const time = currentTime + (i / sampleRate);
+        channelData[i] = tomRef.current.tick(time);
+      }
+      
+      // Create buffer source and play it
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      
+      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
+      if (spectrumAnalyzerRef.current && spectrumAnalyzerRef.current.getMonitoringNode()) {
+        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        source.connect(audioContextRef.current.destination);
+      }
+      
+      // Clean up reference when source ends
+      source.onended = () => {
+        tomAudioSourceRef.current = null;
+      };
+      
+      tomAudioSourceRef.current = source;
+      source.start();
+      
+      console.log('Tom drum triggered!');
+    } catch (error) {
+      console.error('Failed to trigger tom drum:', error);
+      alert('Failed to trigger tom drum');
+    }
+  }
+
+  function releaseTomDrum() {
+    if (!audioContextRef.current || !tomRef.current) {
+      alert('Audio not started yet. Click "Start Audio" first.');
+      return;
+    }
+
+    try {
+      const currentTime = audioContextRef.current.currentTime;
+      tomRef.current.release(currentTime);
+      console.log('Tom drum released!');
+    } catch (error) {
+      console.error('Failed to release tom drum:', error);
+      alert('Failed to release tom drum');
+    }
+  }
+
+  function handleTomConfigChange(param: keyof typeof tomConfig, value: number) {
+    if (!tomRef.current) return;
+    
+    // Update local state
+    setTomConfig(prev => ({ ...prev, [param]: value }));
+    
+    // Update the tom drum
+    switch (param) {
+      case 'frequency':
+        tomRef.current.set_frequency(value);
+        break;
+      case 'tonal':
+        tomRef.current.set_tonal(value);
+        break;
+      case 'punch':
+        tomRef.current.set_punch(value);
+        break;
+      case 'decay':
+        tomRef.current.set_decay(value);
+        break;
+      case 'pitchDrop':
+        tomRef.current.set_pitch_drop(value);
+        break;
+      case 'volume':
+        tomRef.current.set_volume(value);
+        break;
+    }
+  }
+
+  function handleTomPresetChange(preset: string) {
+    if (!tomRef.current) return;
+    
+    setTomPreset(preset);
+    
+    // Create new tom drum with preset
+    tomRef.current = WasmTomDrum.new_with_preset(44100, preset);
+    
+    // Update state to match preset values
+    switch (preset) {
+      case 'high_tom':
+        setTomConfig({ frequency: 180.0, tonal: 0.9, punch: 0.5, decay: 0.3, pitchDrop: 0.4, volume: 0.85 });
+        break;
+      case 'mid_tom':
+        setTomConfig({ frequency: 120.0, tonal: 0.8, punch: 0.4, decay: 0.4, pitchDrop: 0.3, volume: 0.8 });
+        break;
+      case 'low_tom':
+        setTomConfig({ frequency: 90.0, tonal: 0.7, punch: 0.3, decay: 0.6, pitchDrop: 0.2, volume: 0.85 });
+        break;
+      case 'floor_tom':
+        setTomConfig({ frequency: 70.0, tonal: 0.6, punch: 0.2, decay: 0.8, pitchDrop: 0.15, volume: 0.9 });
+        break;
+      default: // default
+        setTomConfig({ frequency: 120.0, tonal: 0.8, punch: 0.4, decay: 0.4, pitchDrop: 0.3, volume: 0.8 });
+    }
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center">WASM Audio Engine Test</h1>
@@ -941,6 +1090,16 @@ export default function WasmTest() {
               }`}
             >
               🥁 Snare
+            </button>
+            <button
+              onClick={() => setActiveTab('tom')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'tom'
+                  ? 'bg-purple-600 text-white border-b-2 border-purple-600'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              🥁 Tom
             </button>
           </div>
           
@@ -1746,6 +1905,159 @@ export default function WasmTest() {
             </button>
             </div>
           )}
+
+          {/* Tom Tab */}
+          {activeTab === 'tom' && (
+            <div>
+            <h3 className="font-semibold mb-4 text-center text-lg">🥁 Tom Drum</h3>
+            
+            {/* Tom Drum Trigger Button */}
+            <button
+              onClick={triggerTomDrum}
+              disabled={!isLoaded || !isPlaying}
+              className="w-full px-4 py-3 mb-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold text-lg shadow-lg"
+            >
+              🥁 TRIGGER TOM
+            </button>
+
+            {/* Preset Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Preset</label>
+              <select
+                value={tomPreset}
+                onChange={(e) => handleTomPresetChange(e.target.value)}
+                disabled={!isLoaded}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded disabled:cursor-not-allowed"
+              >
+                <option value="default">Default</option>
+                <option value="high_tom">High Tom</option>
+                <option value="mid_tom">Mid Tom</option>
+                <option value="low_tom">Low Tom</option>
+                <option value="floor_tom">Floor Tom</option>
+              </select>
+            </div>
+
+            {/* Tom Drum Controls */}
+            <div className="space-y-3">
+              {/* Frequency */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Frequency</label>
+                <input
+                  type="range"
+                  min="60"
+                  max="400"
+                  step="1"
+                  value={tomConfig.frequency}
+                  onChange={(e) => handleTomConfigChange('frequency', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {tomConfig.frequency.toFixed(0)}Hz
+                </span>
+              </div>
+
+              {/* Volume */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Volume</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={tomConfig.volume}
+                  onChange={(e) => handleTomConfigChange('volume', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {tomConfig.volume.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Decay Time */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Decay</label>
+                <input
+                  type="range"
+                  min="0.05"
+                  max="3"
+                  step="0.01"
+                  value={tomConfig.decay}
+                  onChange={(e) => handleTomConfigChange('decay', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {tomConfig.decay.toFixed(2)}s
+                </span>
+              </div>
+
+              {/* Tonal Amount */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Tonal</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={tomConfig.tonal}
+                  onChange={(e) => handleTomConfigChange('tonal', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {tomConfig.tonal.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Punch Amount */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Punch</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={tomConfig.punch}
+                  onChange={(e) => handleTomConfigChange('punch', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {tomConfig.punch.toFixed(2)}
+                </span>
+              </div>
+
+              {/* Pitch Drop */}
+              <div className="flex items-center space-x-2">
+                <label className="w-20 text-sm font-medium">Pitch Drop</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={tomConfig.pitchDrop}
+                  onChange={(e) => handleTomConfigChange('pitchDrop', parseFloat(e.target.value))}
+                  disabled={!isLoaded}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="w-12 text-sm font-mono text-right">
+                  {tomConfig.pitchDrop.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Release Button */}
+            <button
+              onClick={releaseTomDrum}
+              disabled={!isLoaded || !isPlaying}
+              className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed"
+            >
+              Release Tom
+            </button>
+            </div>
+          )}
         </div>
         </div>
         
@@ -1768,6 +2080,7 @@ export default function WasmTest() {
             <p>Kick Drum: {isLoaded && kickDrumRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
             <p>Hi-Hat: {isLoaded && hihatRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
             <p>Snare: {isLoaded && snareRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
+            <p>Tom: {isLoaded && tomRef.current ? '✅ Loaded' : '❌ Not loaded'}</p>
             <p>Audio Context: {audioContextRef.current ? '✅ Ready' : '❌ No'}</p>
             <p>Audio Playing: {isPlaying ? '✅ Yes' : '❌ No'}</p>
           </div>
@@ -1796,6 +2109,9 @@ export default function WasmTest() {
           <li>• <strong>Snare Instrument</strong>: Comprehensive 3-layer snare drum with tonal, noise, and crack components</li>
           <li>• <strong>Snare Presets</strong>: Built-in presets (Default, Crispy, Deep, Tight, Fat) for different snare styles</li>
           <li>• <strong>Snare Parameters</strong>: Frequency, tonal amount, noise amount, crack amount, decay time, and pitch drop controls</li>
+          <li>• <strong>Tom Instrument</strong>: Comprehensive tom drum with tonal and punch layers for realistic drum sounds</li>
+          <li>• <strong>Tom Presets</strong>: Built-in presets (Default, High Tom, Mid Tom, Low Tom, Floor Tom) for different tom styles</li>
+          <li>• <strong>Tom Parameters</strong>: Frequency, tonal amount, punch amount, decay time, and pitch drop controls</li>
           <li>• <strong>Audio mixing</strong>: Stage.tick() sums all instrument outputs with controls applied</li>
         </ul>
       </div>
@@ -1803,7 +2119,7 @@ export default function WasmTest() {
       <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded">
         <h3 className="font-semibold mb-2 text-yellow-300">Instructions:</h3>
         <ol className="list-decimal list-inside text-sm space-y-1 text-yellow-100">
-          <li>Click "Load Audio Engine" to initialize the WASM Stage with 4 oscillators, kick drum, hi-hat, and snare</li>
+          <li>Click "Load Audio Engine" to initialize the WASM Stage with 4 oscillators, kick drum, hi-hat, snare, and tom</li>
           <li>Click "Start Audio" to begin audio processing</li>
           <li><strong>🎹 Keyboard Mapping:</strong> Use keyboard shortcuts for quick testing:
             <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200 mt-1">
@@ -1864,6 +2180,15 @@ export default function WasmTest() {
             <li><strong>Crack Amount:</strong> Control high-frequency snap and crack</li>
             <li><strong>Decay Time:</strong> Adjust overall decay time (0.01-2s)</li>
             <li><strong>Pitch Drop:</strong> Control frequency sweep effect for realistic sound</li>
+          </ul>
+          <li>Test the tom drum instrument with its dedicated section:</li>
+          <ul className="list-disc list-inside ml-4 text-xs space-y-0.5 text-yellow-200">
+            <li><strong>Presets:</strong> Try different tom styles (Default, High Tom, Mid Tom, Low Tom, Floor Tom)</li>
+            <li><strong>Frequency:</strong> Adjust fundamental frequency (60-400Hz)</li>
+            <li><strong>Tonal Amount:</strong> Control the body and pitch component of the tom</li>
+            <li><strong>Punch Amount:</strong> Control mid-range impact and attack character</li>
+            <li><strong>Decay Time:</strong> Adjust overall decay time (0.05-3s)</li>
+            <li><strong>Pitch Drop:</strong> Control frequency sweep effect for realistic tom sound</li>
           </ul>
         </ol>
       </div>
