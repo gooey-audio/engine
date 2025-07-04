@@ -1,3 +1,4 @@
+use crate::effects::{AudioEffect, SoftClippingDistortion};
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::oscillator::Oscillator;
 use crate::waveform::Waveform;
@@ -70,6 +71,9 @@ pub struct HiHat {
     // Amplitude envelope
     pub amplitude_envelope: Envelope,
 
+    // Distortion effect
+    pub distortion: SoftClippingDistortion,
+
     pub is_active: bool,
 }
 
@@ -96,6 +100,7 @@ impl HiHat {
             noise_oscillator: Oscillator::new(sample_rate, config.base_frequency),
             brightness_oscillator: Oscillator::new(sample_rate, config.base_frequency * 2.0),
             amplitude_envelope: Envelope::new(),
+            distortion: SoftClippingDistortion::new(sample_rate),
             is_active: false,
         };
 
@@ -205,6 +210,9 @@ impl HiHat {
         let resonance_factor = 1.0 + self.config.resonance * 0.5;
         let resonant_output = final_output * resonance_factor;
 
+        // Apply distortion effect
+        let processed_output = self.distortion.process(resonant_output);
+
         // Check if hi-hat is still active
         if !self.noise_oscillator.envelope.is_active
             && !self.brightness_oscillator.envelope.is_active
@@ -213,7 +221,7 @@ impl HiHat {
             self.is_active = false;
         }
 
-        resonant_output
+        processed_output
     }
 
     pub fn is_active(&self) -> bool {
@@ -253,5 +261,21 @@ impl HiHat {
     pub fn set_open(&mut self, is_open: bool) {
         self.config.is_open = is_open;
         self.configure_oscillators();
+    }
+
+    pub fn set_distortion_enabled(&mut self, enabled: bool) {
+        self.distortion.set_enabled(enabled);
+    }
+
+    pub fn is_distortion_enabled(&self) -> bool {
+        self.distortion.is_enabled()
+    }
+
+    pub fn set_distortion_drive(&mut self, drive: f32) {
+        self.distortion.set_drive(drive);
+    }
+
+    pub fn set_distortion_output_gain(&mut self, gain: f32) {
+        self.distortion.set_output_gain(gain);
     }
 }

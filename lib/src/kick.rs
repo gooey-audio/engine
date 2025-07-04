@@ -1,3 +1,4 @@
+use crate::effects::{AudioEffect, SoftClippingDistortion};
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::oscillator::Oscillator;
 use crate::waveform::Waveform;
@@ -65,6 +66,9 @@ pub struct KickDrum {
     pub base_frequency: f32,
     pub pitch_start_multiplier: f32,
 
+    // Distortion effect
+    pub distortion: SoftClippingDistortion,
+
     pub is_active: bool,
 }
 
@@ -84,6 +88,7 @@ impl KickDrum {
             pitch_envelope: Envelope::new(),
             base_frequency: config.kick_frequency,
             pitch_start_multiplier: 1.0 + config.pitch_drop * 2.0, // Start 1-3x higher
+            distortion: SoftClippingDistortion::new(sample_rate),
             is_active: false,
         };
 
@@ -191,6 +196,9 @@ impl KickDrum {
 
         let total_output = sub_output + punch_output + click_output;
 
+        // Apply distortion effect
+        let processed_output = self.distortion.process(total_output);
+
         // Check if kick is still active
         if !self.sub_oscillator.envelope.is_active
             && !self.punch_oscillator.envelope.is_active
@@ -199,7 +207,7 @@ impl KickDrum {
             self.is_active = false;
         }
 
-        total_output
+        processed_output
     }
 
     pub fn is_active(&self) -> bool {
@@ -240,5 +248,21 @@ impl KickDrum {
     pub fn set_pitch_drop(&mut self, pitch_drop: f32) {
         self.config.pitch_drop = pitch_drop.clamp(0.0, 1.0);
         self.pitch_start_multiplier = 1.0 + self.config.pitch_drop * 2.0;
+    }
+
+    pub fn set_distortion_enabled(&mut self, enabled: bool) {
+        self.distortion.set_enabled(enabled);
+    }
+
+    pub fn is_distortion_enabled(&self) -> bool {
+        self.distortion.is_enabled()
+    }
+
+    pub fn set_distortion_drive(&mut self, drive: f32) {
+        self.distortion.set_drive(drive);
+    }
+
+    pub fn set_distortion_output_gain(&mut self, gain: f32) {
+        self.distortion.set_output_gain(gain);
     }
 }
