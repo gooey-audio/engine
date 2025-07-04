@@ -5,6 +5,7 @@ pub struct Stage {
     pub sample_rate: f32,
     pub instruments: Vec<Oscillator>,
     pub limiter: BrickWallLimiter,
+    pub global_distortion_enabled: bool,
 }
 
 impl Stage {
@@ -13,6 +14,7 @@ impl Stage {
             sample_rate,
             instruments: Vec::new(),
             limiter: BrickWallLimiter::new(1.0), // Default threshold at 1.0 to prevent clipping
+            global_distortion_enabled: false, // Default to disabled to prevent volume issues
         }
     }
 
@@ -139,6 +141,16 @@ impl Stage {
     /// Get the current limiter threshold
     pub fn get_limiter_threshold(&self) -> f32 {
         self.limiter.threshold
+    }
+    
+    /// Set the global distortion enabled state
+    pub fn set_global_distortion_enabled(&mut self, enabled: bool) {
+        self.global_distortion_enabled = enabled;
+    }
+    
+    /// Get the global distortion enabled state
+    pub fn is_global_distortion_enabled(&self) -> bool {
+        self.global_distortion_enabled
     }
 }
 

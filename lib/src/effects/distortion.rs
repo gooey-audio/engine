@@ -102,7 +102,7 @@ impl SoftClippingDistortion {
         let mut distortion = Self {
             config,
             sample_rate,
-            enabled: true,
+            enabled: false, // Default to disabled to prevent volume issues
             pre_filter: OnePointFilter::new(),
             post_filter: OnePointFilter::new(),
         };

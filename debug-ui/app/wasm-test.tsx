@@ -19,7 +19,7 @@ export default function WasmTest() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [activeTab, setActiveTab] = useState<'oscillators' | 'kick' | 'hihat' | 'snare' | 'tom'>('oscillators');
+  const [activeTab, setActiveTab] = useState<'oscillators' | 'kick' | 'hihat' | 'snare' | 'tom' | 'globalfx'>('oscillators');
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
   const [modulatorFrequencies, setModulatorFrequencies] = useState([100, 150, 220, 300]); // Modulator frequency for each instrument (for ring modulation)
@@ -78,6 +78,9 @@ export default function WasmTest() {
     pitchDrop: 0.3,
     volume: 0.8,
   });
+
+  // Global FX state
+  const [globalDistortionEnabled, setGlobalDistortionEnabled] = useState(false);
 
   async function loadWasm() {
     setIsLoading(true);
@@ -916,6 +919,29 @@ export default function WasmTest() {
     }
   }
 
+  function handleGlobalDistortionToggle(enabled: boolean) {
+    setGlobalDistortionEnabled(enabled);
+    
+    // Update stage global distortion setting
+    if (stageRef.current) {
+      stageRef.current.set_global_distortion_enabled(enabled);
+    }
+    
+    // Update individual instrument distortion settings
+    if (kickDrumRef.current) {
+      kickDrumRef.current.set_distortion_enabled(enabled);
+    }
+    if (hihatRef.current) {
+      hihatRef.current.set_distortion_enabled(enabled);
+    }
+    if (snareRef.current) {
+      snareRef.current.set_distortion_enabled(enabled);
+    }
+    if (tomRef.current) {
+      tomRef.current.set_distortion_enabled(enabled);
+    }
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center">WASM Audio Engine Test</h1>
@@ -991,6 +1017,16 @@ export default function WasmTest() {
               }`}
             >
               🥁 Tom
+            </button>
+            <button
+              onClick={() => setActiveTab('globalfx')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'globalfx'
+                  ? 'bg-green-600 text-white border-b-2 border-green-600'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              🎛️ Global FX
             </button>
           </div>
           
@@ -1947,6 +1983,52 @@ export default function WasmTest() {
             >
               Release Tom
             </button>
+            </div>
+          )}
+
+          {/* Global FX Tab */}
+          {activeTab === 'globalfx' && (
+            <div>
+              <h3 className="font-semibold mb-3 text-center">🎛️ Global Effects</h3>
+              
+              <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
+                <h4 className="font-medium mb-3 text-center">Master FX Controls</h4>
+                
+                {/* Global Distortion Toggle */}
+                <div className="flex items-center justify-between mb-4 p-3 bg-gray-700 rounded-lg">
+                  <div>
+                    <h5 className="font-medium text-sm mb-1">🔥 Harmonic Distortion</h5>
+                    <p className="text-xs text-gray-300">Stage-level distortion effect for all instruments</p>
+                  </div>
+                  <button
+                    onClick={() => handleGlobalDistortionToggle(!globalDistortionEnabled)}
+                    disabled={!isLoaded}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed ${
+                      globalDistortionEnabled
+                        ? 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-600'
+                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500 disabled:bg-gray-600'
+                    }`}
+                  >
+                    {globalDistortionEnabled ? '🔥 ON' : '⚫ OFF'}
+                  </button>
+                </div>
+                
+                {globalDistortionEnabled && (
+                  <div className="mt-4 p-3 bg-gray-750 rounded-lg border border-orange-600/30">
+                    <p className="text-xs text-orange-300 text-center">
+                      ✨ Harmonic distortion is now active on all instruments
+                    </p>
+                  </div>
+                )}
+                
+                {!globalDistortionEnabled && (
+                  <div className="mt-4 p-3 bg-gray-750 rounded-lg border border-gray-600/30">
+                    <p className="text-xs text-gray-400 text-center">
+                      💡 Enable distortion to add warm harmonic character to your drums
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

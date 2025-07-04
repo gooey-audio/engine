@@ -194,6 +194,16 @@ pub mod web {
         pub fn is_instrument_enabled(&self, index: usize) -> bool {
             self.stage.is_instrument_enabled(index)
         }
+        
+        #[wasm_bindgen]
+        pub fn set_global_distortion_enabled(&mut self, enabled: bool) {
+            self.stage.set_global_distortion_enabled(enabled);
+        }
+        
+        #[wasm_bindgen]
+        pub fn is_global_distortion_enabled(&self) -> bool {
+            self.stage.is_global_distortion_enabled()
+        }
     }
 
     #[wasm_bindgen]
