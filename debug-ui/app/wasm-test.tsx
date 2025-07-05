@@ -9,6 +9,7 @@ import init, {
   WasmTomDrum,
 } from "../public/wasm/oscillator.js";
 import { SpectrumAnalyzerWithRef } from "./spectrum-analyzer";
+import { SpectrogramDisplayWithRef } from "./spectrogram-display";
 
 export default function WasmTest() {
   const stageRef = useRef<WasmStage | null>(null);
@@ -25,6 +26,9 @@ export default function WasmTest() {
     connectSource: (source: AudioNode) => void;
     getAnalyser: () => AnalyserNode | null;
     getMonitoringNode: () => GainNode | null;
+  } | null>(null);
+  const spectrogramRef = useRef<{
+    connectSource: (source: AudioNode) => void;
   } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -2461,6 +2465,18 @@ export default function WasmTest() {
               isActive={isPlaying}
               width={600}
               height={200}
+            />
+          </div>
+
+          {/* Spectrogram Display */}
+          <div>
+            <SpectrogramDisplayWithRef
+              ref={spectrogramRef}
+              audioContext={audioContextRef.current}
+              isActive={isPlaying}
+              width={600}
+              height={200}
+              analyser={spectrumAnalyzerRef.current?.getAnalyser() || null}
             />
           </div>
 
