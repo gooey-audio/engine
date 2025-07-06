@@ -222,15 +222,19 @@ export default function WasmTest() {
 
       // Create kick drum instance
       kickDrumRef.current = new WasmKickDrum(44100);
+      kickDrumRef.current.set_volume(kickConfig.volume);
 
       // Create hi-hat instance
       hihatRef.current = WasmHiHat.new_with_preset(44100, "closed_default");
+      hihatRef.current.set_volume(hihatConfig.volume);
 
       // Create snare instance
       snareRef.current = new WasmSnareDrum(44100);
+      snareRef.current.set_volume(snareConfig.volume);
 
       // Create tom instance
       tomRef.current = new WasmTomDrum(44100);
+      tomRef.current.set_volume(tomConfig.volume);
 
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
@@ -624,6 +628,8 @@ export default function WasmTest() {
   ) {
     if (!kickDrumRef.current) return;
 
+    console.log(`[DEBUG] handleKickConfigChange called: param=${param}, value=${value}`);
+
     // Update local state
     setKickConfig((prev) => ({ ...prev, [param]: value }));
 
@@ -648,6 +654,7 @@ export default function WasmTest() {
         kickDrumRef.current.set_pitch_drop(value);
         break;
       case "volume":
+        console.log(`[DEBUG] Setting kick volume to ${value}`);
         kickDrumRef.current.set_volume(value);
         break;
     }
@@ -888,6 +895,8 @@ export default function WasmTest() {
   ) {
     if (!hihatRef.current) return;
 
+    console.log(`[DEBUG] handleHihatConfigChange called: param=${param}, value=${value}`);
+
     // Update local state
     setHihatConfig((prev) => ({ ...prev, [param]: value }));
 
@@ -909,6 +918,7 @@ export default function WasmTest() {
         hihatRef.current.set_attack(value as number);
         break;
       case "volume":
+        console.log(`[DEBUG] Setting hihat volume to ${value}`);
         hihatRef.current.set_volume(value as number);
         break;
       case "isOpen":
@@ -1019,6 +1029,8 @@ export default function WasmTest() {
   ) {
     if (!snareRef.current) return;
 
+    console.log(`[DEBUG] handleSnareConfigChange called: param=${param}, value=${value}`);
+
     // Update local state
     setSnareConfig((prev) => ({ ...prev, [param]: value }));
 
@@ -1043,6 +1055,7 @@ export default function WasmTest() {
         snareRef.current.set_pitch_drop(value);
         break;
       case "volume":
+        console.log(`[DEBUG] Setting snare volume to ${value}`);
         snareRef.current.set_volume(value);
         break;
     }
@@ -1202,6 +1215,8 @@ export default function WasmTest() {
   function handleTomConfigChange(param: keyof typeof tomConfig, value: number) {
     if (!tomRef.current) return;
 
+    console.log(`[DEBUG] handleTomConfigChange called: param=${param}, value=${value}`);
+
     // Update local state
     setTomConfig((prev) => ({ ...prev, [param]: value }));
 
@@ -1223,6 +1238,7 @@ export default function WasmTest() {
         tomRef.current.set_pitch_drop(value);
         break;
       case "volume":
+        console.log(`[DEBUG] Setting tom volume to ${value}`);
         tomRef.current.set_volume(value);
         break;
     }
