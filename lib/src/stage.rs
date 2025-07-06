@@ -84,18 +84,8 @@ impl Stage {
                     self.tom.trigger(current_time);
                 }
 
-                // Also trigger legacy instruments for backward compatibility
-                let mut instruments_to_trigger = Vec::new();
-                for (instrument_index, pattern) in self.sequencer.patterns.iter().enumerate() {
-                    if pattern[current_step] && instrument_index < self.instruments.len() {
-                        instruments_to_trigger.push(instrument_index);
-                    }
-                }
-
-                // Now trigger the legacy instruments (with mutable access)
-                for instrument_index in instruments_to_trigger {
-                    self.trigger_instrument(instrument_index, current_time);
-                }
+                // Basic oscillators are NOT triggered by the sequencer
+                // They should only be triggered manually via "Trigger all instruments" button
 
                 // Mark that we've processed this step
                 self.sequencer.last_step_time = current_time;
@@ -234,11 +224,8 @@ impl Stage {
 
     /// Start the sequencer
     pub fn sequencer_play(&mut self) {
-        // For immediate play, we need to initialize timing
-        // This is a workaround since we don't have current_time here
-        // The real fix is to always use sequencer_play_at_time
-        self.sequencer.play();
-        self.sequencer.last_step_time = 0.0; // Reset timing
+        // Initialize with proper timing - use a small offset to ensure proper initialization
+        self.sequencer.play_at_time(0.001);
     }
     
     /// Start the sequencer with a specific time

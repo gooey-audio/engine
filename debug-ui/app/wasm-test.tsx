@@ -48,7 +48,7 @@ export default function WasmTest() {
     100, 150, 220, 300,
   ]); // Modulator frequency for each instrument (for ring modulation)
   const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle)
-  const [enabled, setEnabled] = useState([true, true, true, true]); // Enabled state for each instrument
+  const [enabled, setEnabled] = useState([false, false, false, false]); // Enabled state for each instrument - disabled by default
   const [adsrValues, setAdsrValues] = useState([
     { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }, // Bass Drum
     { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.1 }, // Snare
@@ -212,6 +212,11 @@ export default function WasmTest() {
       // Initialize modulator frequencies for each instrument
       modulatorFrequencies.forEach((freq, index) => {
         stageRef.current?.set_instrument_modulator_frequency(index, freq);
+      });
+
+      // Initialize enabled state for each instrument (basic oscillators disabled by default)
+      enabled.forEach((isEnabled, index) => {
+        stageRef.current?.set_instrument_enabled(index, isEnabled);
       });
 
       // Create kick drum instance
