@@ -101,7 +101,7 @@ impl TomDrum {
         self.tonal_oscillator.set_adsr(ADSRConfig::new(
             0.001,                    // Very fast attack
             config.decay_time * 0.9,  // Main decay
-            0.1,                      // Low sustain for drum character
+            0.0,                      // No sustain - drums should decay to silence
             config.decay_time * 0.3,  // Medium release
         ));
 
