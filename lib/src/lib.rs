@@ -363,6 +363,27 @@ pub mod web {
         pub fn get_saturation(&self) -> f32 {
             self.stage.get_saturation()
         }
+        
+        // Chorus effect control methods
+        #[wasm_bindgen]
+        pub fn set_chorus_enabled(&mut self, enabled: bool) {
+            self.stage.set_chorus_enabled(enabled);
+        }
+        
+        #[wasm_bindgen]
+        pub fn is_chorus_enabled(&self) -> bool {
+            self.stage.is_chorus_enabled()
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_chorus_mix(&mut self, mix: f32) {
+            self.stage.set_chorus_mix(mix);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_chorus_mix(&self) -> f32 {
+            self.stage.get_chorus_mix()
+        }
     }
 
     #[wasm_bindgen]
