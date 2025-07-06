@@ -16,6 +16,9 @@ pub struct Stage {
     pub snare: SnareDrum,
     pub hihat: HiHat,
     pub tom: TomDrum,
+    
+    // Harmonic distortion settings
+    pub saturation: f32, // 0.0 to 1.0, where 0.0 is no distortion
 }
 
 /// A 16-step drum sequencer that manages pattern playback for multiple instruments
@@ -48,6 +51,9 @@ impl Stage {
             snare: SnareDrum::with_config(sample_rate, SnareConfig::default()),
             hihat: HiHat::with_config(sample_rate, HiHatConfig::closed_default()),
             tom: TomDrum::with_config(sample_rate, TomConfig::default()),
+            
+            // Initialize harmonic distortion
+            saturation: 0.0, // No distortion by default
         }
     }
 
@@ -104,6 +110,11 @@ impl Stage {
         // Add legacy instruments for backward compatibility
         for instrument in &mut self.instruments {
             output += instrument.tick(current_time);
+        }
+        
+        // Apply harmonic distortion if enabled
+        if self.saturation > 0.0 {
+            output = self.apply_harmonic_distortion(output);
         }
         
         // Apply limiter to the combined output
@@ -337,6 +348,30 @@ impl Stage {
     
     pub fn set_tom_config(&mut self, config: TomConfig) {
         self.tom.set_config(config);
+    }
+    
+    /// Apply harmonic distortion using soft clipping
+    fn apply_harmonic_distortion(&self, input: f32) -> f32 {
+        // Use saturation parameter to control distortion amount
+        let drive = 1.0 + self.saturation * 9.0; // Scale from 1.0 to 10.0
+        let gain = 1.0 / drive.sqrt(); // Compensate for increased volume
+        
+        // Apply soft clipping using hyperbolic tangent
+        let driven = input * drive;
+        let clipped = driven.tanh();
+        
+        // Apply makeup gain to maintain overall volume
+        clipped * gain
+    }
+    
+    /// Set the saturation level (0.0 to 1.0)
+    pub fn set_saturation(&mut self, saturation: f32) {
+        self.saturation = saturation.clamp(0.0, 1.0);
+    }
+    
+    /// Get the current saturation level
+    pub fn get_saturation(&self) -> f32 {
+        self.saturation
     }
 }
 

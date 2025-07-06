@@ -352,6 +352,17 @@ pub mod web {
             };
             self.stage.set_tom_config(config);
         }
+        
+        // Saturation control methods
+        #[wasm_bindgen]
+        pub fn set_saturation(&mut self, saturation: f32) {
+            self.stage.set_saturation(saturation);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_saturation(&self) -> f32 {
+            self.stage.get_saturation()
+        }
     }
 
     #[wasm_bindgen]
