@@ -37,7 +37,7 @@ impl KickConfig {
     }
 
     pub fn default() -> Self {
-        Self::new(50.0, 0.7, 0.8, 0.3, 0.8, 0.6, 0.8)
+        Self::new(30.0, 0.80, 0.80, 0.20, 0.28, 0.20, 0.80)
     }
 
     pub fn punchy() -> Self {
