@@ -249,6 +249,107 @@ pub mod web {
         pub fn sequencer_is_playing(&self) -> bool {
             self.stage.sequencer_is_playing()
         }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_set_default_patterns(&mut self) {
+            self.stage.sequencer_set_default_patterns();
+        }
+        
+        // Drum configuration getters
+        #[wasm_bindgen]
+        pub fn get_kick_frequency(&self) -> f32 {
+            self.stage.get_kick_config().kick_frequency
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_snare_frequency(&self) -> f32 {
+            self.stage.get_snare_config().snare_frequency
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_hihat_frequency(&self) -> f32 {
+            self.stage.get_hihat_config().base_frequency
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_tom_frequency(&self) -> f32 {
+            self.stage.get_tom_config().tom_frequency
+        }
+        
+        // Drum configuration setters
+        #[wasm_bindgen]
+        pub fn set_kick_config(&mut self, frequency: f32, punch: f32, sub: f32, click: f32, decay: f32, pitch_drop: f32, volume: f32) {
+            let config = KickConfig::new(frequency, punch, sub, click, decay, pitch_drop, volume);
+            self.stage.set_kick_config(config);
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_snare_config(&mut self, frequency: f32, tonal: f32, noise: f32, crack: f32, decay: f32, pitch_drop: f32, volume: f32) {
+            let config = SnareConfig::new(frequency, tonal, noise, crack, decay, pitch_drop, volume);
+            self.stage.set_snare_config(config);
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_hihat_config(&mut self, frequency: f32, resonance: f32, brightness: f32, decay: f32, attack: f32, volume: f32, is_open: bool) {
+            let config = HiHatConfig::new(frequency, resonance, brightness, decay, attack, volume, is_open);
+            self.stage.set_hihat_config(config);
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_tom_config(&mut self, frequency: f32, tonal: f32, punch: f32, decay: f32, pitch_drop: f32, volume: f32) {
+            let config = TomConfig::new(frequency, tonal, punch, decay, pitch_drop, volume);
+            self.stage.set_tom_config(config);
+        }
+        
+        // Drum preset loaders
+        #[wasm_bindgen]
+        pub fn load_kick_preset(&mut self, preset_name: &str) {
+            let config = match preset_name {
+                "punchy" => KickConfig::punchy(),
+                "deep" => KickConfig::deep(),
+                "tight" => KickConfig::tight(),
+                _ => KickConfig::default(),
+            };
+            self.stage.set_kick_config(config);
+        }
+        
+        #[wasm_bindgen]
+        pub fn load_snare_preset(&mut self, preset_name: &str) {
+            let config = match preset_name {
+                "crispy" => SnareConfig::crispy(),
+                "deep" => SnareConfig::deep(),
+                "tight" => SnareConfig::tight(),
+                "fat" => SnareConfig::fat(),
+                _ => SnareConfig::default(),
+            };
+            self.stage.set_snare_config(config);
+        }
+        
+        #[wasm_bindgen]
+        pub fn load_hihat_preset(&mut self, preset_name: &str) {
+            let config = match preset_name {
+                "closed_default" => HiHatConfig::closed_default(),
+                "open_default" => HiHatConfig::open_default(),
+                "closed_tight" => HiHatConfig::closed_tight(),
+                "open_bright" => HiHatConfig::open_bright(),
+                "closed_dark" => HiHatConfig::closed_dark(),
+                "open_long" => HiHatConfig::open_long(),
+                _ => HiHatConfig::closed_default(),
+            };
+            self.stage.set_hihat_config(config);
+        }
+        
+        #[wasm_bindgen]
+        pub fn load_tom_preset(&mut self, preset_name: &str) {
+            let config = match preset_name {
+                "high_tom" => TomConfig::high_tom(),
+                "mid_tom" => TomConfig::mid_tom(),
+                "low_tom" => TomConfig::low_tom(),
+                "floor_tom" => TomConfig::floor_tom(),
+                _ => TomConfig::default(),
+            };
+            self.stage.set_tom_config(config);
+        }
     }
 
     #[wasm_bindgen]

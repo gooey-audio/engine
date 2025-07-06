@@ -11,21 +11,21 @@ interface SequencerProps {
 
 export default function Sequencer({ stage, isPlaying, audioContext }: SequencerProps) {
   const [patterns, setPatterns] = useState<boolean[][]>([
-    new Array(16).fill(false), // Bass Drum
+    new Array(16).fill(false), // Kick Drum
     new Array(16).fill(false), // Snare
     new Array(16).fill(false), // Hi-hat  
-    new Array(16).fill(false), // Cymbal
+    new Array(16).fill(false), // Tom
   ]);
   const [currentStep, setCurrentStep] = useState(0);
   const [bpm, setBpm] = useState(120);
   const [sequencerPlaying, setSequencerPlaying] = useState(false);
 
-  const instrumentNames = ['Bass', 'Snare', 'Hi-hat', 'Cymbal'];
+  const instrumentNames = ['Kick', 'Snare', 'Hi-hat', 'Tom'];
   const instrumentColors = [
-    'bg-red-600 hover:bg-red-700',     // Bass - Red
+    'bg-red-600 hover:bg-red-700',     // Kick - Red
     'bg-blue-600 hover:bg-blue-700',   // Snare - Blue  
     'bg-yellow-600 hover:bg-yellow-700', // Hi-hat - Yellow
-    'bg-purple-600 hover:bg-purple-700', // Cymbal - Purple
+    'bg-purple-600 hover:bg-purple-700', // Tom - Purple
   ];
 
   // Update current step display
@@ -46,20 +46,25 @@ export default function Sequencer({ stage, isPlaying, audioContext }: SequencerP
   useEffect(() => {
     if (!stage) return;
     
-    // Set up a default pattern for testing
-    // Bass drum on steps 1, 5, 9, 13 (beats 1, 2, 3, 4)
-    stage.sequencer_set_step(0, 0, true);
-    stage.sequencer_set_step(0, 4, true);
-    stage.sequencer_set_step(0, 8, true);
-    stage.sequencer_set_step(0, 12, true);
-    
-    // Snare on steps 5, 13 (beats 2, 4)
-    stage.sequencer_set_step(1, 4, true);
-    stage.sequencer_set_step(1, 12, true);
-    
-    // Hi-hat on every other step
-    for (let i = 0; i < 16; i += 2) {
-      stage.sequencer_set_step(2, i, true);
+    // Use the new default pattern setup method
+    if (typeof stage.sequencer_set_default_patterns === 'function') {
+      stage.sequencer_set_default_patterns();
+    } else {
+      // Fallback to manual setup for backwards compatibility
+      // Kick drum on steps 1, 5, 9, 13 (beats 1, 2, 3, 4)
+      stage.sequencer_set_step(0, 0, true);
+      stage.sequencer_set_step(0, 4, true);
+      stage.sequencer_set_step(0, 8, true);
+      stage.sequencer_set_step(0, 12, true);
+      
+      // Snare on steps 5, 13 (beats 2, 4)
+      stage.sequencer_set_step(1, 4, true);
+      stage.sequencer_set_step(1, 12, true);
+      
+      // Hi-hat on every other step
+      for (let i = 0; i < 16; i += 2) {
+        stage.sequencer_set_step(2, i, true);
+      }
     }
     
     const syncedPatterns = patterns.map((pattern, instrumentIndex) =>

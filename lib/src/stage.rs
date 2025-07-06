@@ -1,11 +1,21 @@
 use crate::envelope::ADSRConfig;
 use crate::oscillator::Oscillator;
+use crate::kick::{KickDrum, KickConfig};
+use crate::snare::{SnareDrum, SnareConfig};
+use crate::hihat::{HiHat, HiHatConfig};
+use crate::tom::{TomDrum, TomConfig};
 
 pub struct Stage {
     pub sample_rate: f32,
-    pub instruments: Vec<Oscillator>,
+    pub instruments: Vec<Oscillator>, // Keep for backward compatibility
     pub limiter: BrickWallLimiter,
     pub sequencer: Sequencer,
+    
+    // Drum instruments for sequencer
+    pub kick: KickDrum,
+    pub snare: SnareDrum,
+    pub hihat: HiHat,
+    pub tom: TomDrum,
 }
 
 /// A 16-step drum sequencer that manages pattern playback for multiple instruments
@@ -32,6 +42,12 @@ impl Stage {
             instruments: Vec::new(),
             limiter: BrickWallLimiter::new(1.0), // Default threshold at 1.0 to prevent clipping
             sequencer: Sequencer::new(),
+            
+            // Initialize drum instruments with default presets
+            kick: KickDrum::with_config(sample_rate, KickConfig::default()),
+            snare: SnareDrum::with_config(sample_rate, SnareConfig::default()),
+            hihat: HiHat::with_config(sample_rate, HiHatConfig::closed_default()),
+            tom: TomDrum::with_config(sample_rate, TomConfig::default()),
         }
     }
 
@@ -50,7 +66,25 @@ impl Stage {
             if self.sequencer.should_trigger_step(current_time) {
                 let current_step = self.sequencer.current_step;
 
-                // Collect which instruments should be triggered to avoid borrow conflicts
+                // Trigger drum instruments based on patterns
+                // Pattern 0: Kick
+                if self.sequencer.patterns[0][current_step] {
+                    self.kick.trigger(current_time);
+                }
+                // Pattern 1: Snare
+                if self.sequencer.patterns[1][current_step] {
+                    self.snare.trigger(current_time);
+                }
+                // Pattern 2: Hi-hat
+                if self.sequencer.patterns[2][current_step] {
+                    self.hihat.trigger(current_time);
+                }
+                // Pattern 3: Tom
+                if self.sequencer.patterns[3][current_step] {
+                    self.tom.trigger(current_time);
+                }
+
+                // Also trigger legacy instruments for backward compatibility
                 let mut instruments_to_trigger = Vec::new();
                 for (instrument_index, pattern) in self.sequencer.patterns.iter().enumerate() {
                     if pattern[current_step] && instrument_index < self.instruments.len() {
@@ -58,7 +92,7 @@ impl Stage {
                     }
                 }
 
-                // Now trigger the instruments (with mutable access)
+                // Now trigger the legacy instruments (with mutable access)
                 for instrument_index in instruments_to_trigger {
                     self.trigger_instrument(instrument_index, current_time);
                 }
@@ -70,9 +104,18 @@ impl Stage {
         }
 
         let mut output = 0.0;
+        
+        // Add drum instrument outputs
+        output += self.kick.tick(current_time);
+        output += self.snare.tick(current_time);
+        output += self.hihat.tick(current_time);
+        output += self.tom.tick(current_time);
+        
+        // Add legacy instruments for backward compatibility
         for instrument in &mut self.instruments {
             output += instrument.tick(current_time);
         }
+        
         // Apply limiter to the combined output
         self.limiter.process(output)
     }
@@ -191,7 +234,11 @@ impl Stage {
 
     /// Start the sequencer
     pub fn sequencer_play(&mut self) {
+        // For immediate play, we need to initialize timing
+        // This is a workaround since we don't have current_time here
+        // The real fix is to always use sequencer_play_at_time
         self.sequencer.play();
+        self.sequencer.last_step_time = 0.0; // Reset timing
     }
     
     /// Start the sequencer with a specific time
@@ -242,6 +289,67 @@ impl Stage {
     /// Check if the sequencer is playing
     pub fn sequencer_is_playing(&self) -> bool {
         self.sequencer.is_playing
+    }
+    
+    /// Set up default test patterns for the drums
+    pub fn sequencer_set_default_patterns(&mut self) {
+        // Clear existing patterns
+        self.sequencer.clear_all();
+        
+        // Kick: On beats 1, 5, 9, 13 (quarter notes)
+        self.sequencer.set_step(0, 0, true);  // Beat 1
+        self.sequencer.set_step(0, 4, true);  // Beat 5
+        self.sequencer.set_step(0, 8, true);  // Beat 9
+        self.sequencer.set_step(0, 12, true); // Beat 13
+        
+        // Snare: On beats 5, 13 (backbeat)
+        self.sequencer.set_step(1, 4, true);  // Beat 5
+        self.sequencer.set_step(1, 12, true); // Beat 13
+        
+        // Hi-hat: On off-beats (8th notes)
+        for i in 0..16 {
+            if i % 2 == 1 {
+                self.sequencer.set_step(2, i, true);
+            }
+        }
+        
+        // Tom: Sparse pattern on beats 7, 15
+        self.sequencer.set_step(3, 6, true);  // Beat 7
+        self.sequencer.set_step(3, 14, true); // Beat 15
+    }
+    
+    /// Get drum instrument configurations
+    pub fn get_kick_config(&self) -> KickConfig {
+        self.kick.config
+    }
+    
+    pub fn get_snare_config(&self) -> SnareConfig {
+        self.snare.config
+    }
+    
+    pub fn get_hihat_config(&self) -> HiHatConfig {
+        self.hihat.config
+    }
+    
+    pub fn get_tom_config(&self) -> TomConfig {
+        self.tom.config
+    }
+    
+    /// Set drum instrument configurations
+    pub fn set_kick_config(&mut self, config: KickConfig) {
+        self.kick.set_config(config);
+    }
+    
+    pub fn set_snare_config(&mut self, config: SnareConfig) {
+        self.snare.set_config(config);
+    }
+    
+    pub fn set_hihat_config(&mut self, config: HiHatConfig) {
+        self.hihat.set_config(config);
+    }
+    
+    pub fn set_tom_config(&mut self, config: TomConfig) {
+        self.tom.set_config(config);
     }
 }
 
