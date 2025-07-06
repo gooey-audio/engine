@@ -2,6 +2,8 @@
 
 pub mod audio_state;
 pub mod envelope;
+pub mod filters;
+pub mod fm_snap;
 pub mod hihat;
 pub mod kick;
 pub mod oscillator;
