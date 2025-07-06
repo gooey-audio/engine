@@ -17,6 +17,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.1.0(react@19.1.0)
+      spectrogram:
+        specifier: ^0.0.7
+        version: 0.0.7
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4
@@ -30,6 +33,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.1.6(@types/react@19.1.8)
+      '@types/spectrogram':
+        specifier: ^0.0.4
+        version: 0.0.4
       tailwindcss:
         specifier: ^4
         version: 4.1.10
@@ -344,6 +350,9 @@ packages:
   '@types/react@19.1.8':
     resolution: {integrity: sha512-AwAfQ2Wa5bCx9WP8nZL2uMZWod7J7/JSplxbTmBQ5ms6QpqNYm672H0Vu9ZVKVngQ+ii4R/byguVEUZQyeg44g==}
 
+  '@types/spectrogram@0.0.4':
+    resolution: {integrity: sha512-BuL7odXaV7Gr2QgaxL43nScvvPlJiumGwzFQSwuvKJ+4+T9o+vpdc/O0JY86HaCzHSSOa/28e+m20mbJwF13zw==}
+
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
     engines: {node: '>=10.16.0'}
@@ -536,6 +545,10 @@ packages:
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+    engines: {node: '>=0.10.0'}
+
+  spectrogram@0.0.7:
+    resolution: {integrity: sha512-lBua7BXerhLev7x2FWEdVUDGtCkHLK2+Bf1/sX9EyH/qVOJyCkLe2cs9DTDiX29GzytFFumOebqNZ856A+M+Vg==}
     engines: {node: '>=0.10.0'}
 
   streamsearch@1.1.0:
@@ -813,6 +826,8 @@ snapshots:
     dependencies:
       csstype: 3.1.3
 
+  '@types/spectrogram@0.0.4': {}
+
   busboy@1.6.0:
     dependencies:
       streamsearch: 1.1.0
@@ -1004,6 +1019,8 @@ snapshots:
     optional: true
 
   source-map-js@1.2.1: {}
+
+  spectrogram@0.0.7: {}
 
   streamsearch@1.1.0: {}
 
