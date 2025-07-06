@@ -41,7 +41,7 @@ export default function WasmTest() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "oscillators" | "kick" | "hihat" | "snare" | "tom"
-  >("oscillators");
+  >("kick");
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
   const [modulatorFrequencies, setModulatorFrequencies] = useState([
@@ -2496,7 +2496,7 @@ export default function WasmTest() {
         {/* Right Column - Spectrum Analyzer and Status */}
         <div className="space-y-4">
           {/* Spectrum Analyzer */}
-          <div className="sticky top-4">
+          <div>
             <SpectrumAnalyzerWithRef
               ref={spectrumAnalyzerRef}
               audioContext={audioContextRef.current}
@@ -2521,11 +2521,6 @@ export default function WasmTest() {
             />
           </div>
 
-          <Sequencer
-            stage={stageRef.current}
-            isPlaying={isPlaying}
-            audioContext={audioContextRef.current}
-          />
           
           <div className="p-4 bg-gray-800 rounded">
             <h2 className="font-semibold mb-2">Status:</h2>
