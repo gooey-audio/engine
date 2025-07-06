@@ -8,6 +8,8 @@ import init, {
   WasmSnareDrum,
   WasmTomDrum,
 } from "../public/wasm/oscillator.js";
+
+import Sequencer from "./sequencer";
 import { SpectrumAnalyzerWithRef } from "./spectrum-analyzer";
 import { SpectrogramDisplayWithRef } from "./spectrogram-display";
 
@@ -22,27 +24,31 @@ export default function WasmTest() {
   const hihatAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const snareAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const tomAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
   const spectrumAnalyzerRef = useRef<{
     connectSource: (source: AudioNode) => void;
     getAnalyser: () => AnalyserNode | null;
     getMonitoringNode: () => GainNode | null;
   } | null>(null);
+  
   const spectrogramRef = useRef<{
     connectSource: (source: AudioNode) => void;
   } | null>(null);
+  
+  const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "oscillators" | "kick" | "hihat" | "snare" | "tom"
-  >("oscillators");
+  >("kick");
   const [volumes, setVolumes] = useState([1.0, 1.0, 1.0, 1.0]); // Volume for each instrument
   const [frequencies, setFrequencies] = useState([200, 300, 440, 600]); // Frequency for each instrument
   const [modulatorFrequencies, setModulatorFrequencies] = useState([
     100, 150, 220, 300,
   ]); // Modulator frequency for each instrument (for ring modulation)
   const [waveforms, setWaveforms] = useState([1, 1, 1, 1]); // Waveform for each instrument (0=Sine, 1=Square, 2=Saw, 3=Triangle)
-  const [enabled, setEnabled] = useState([true, true, true, true]); // Enabled state for each instrument
+  const [enabled, setEnabled] = useState([false, false, false, false]); // Enabled state for each instrument - disabled by default
   const [adsrValues, setAdsrValues] = useState([
     { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }, // Bass Drum
     { attack: 0.001, decay: 0.05, sustain: 0.3, release: 0.1 }, // Snare
@@ -208,6 +214,11 @@ export default function WasmTest() {
         stageRef.current?.set_instrument_modulator_frequency(index, freq);
       });
 
+      // Initialize enabled state for each instrument (basic oscillators disabled by default)
+      enabled.forEach((isEnabled, index) => {
+        stageRef.current?.set_instrument_enabled(index, isEnabled);
+      });
+
       // Create kick drum instance
       kickDrumRef.current = new WasmKickDrum(44100);
 
@@ -246,9 +257,35 @@ export default function WasmTest() {
       if (audioContextRef.current.state === "suspended") {
         await audioContextRef.current.resume();
       }
-
+      
+      // Create a continuous audio processing loop using ScriptProcessorNode
+      // This is needed for the sequencer to advance through steps
+      const bufferSize = 4096;
+      const processor = audioContextRef.current.createScriptProcessor(bufferSize, 0, 1);
+      audioProcessorRef.current = processor;
+      
+      processor.onaudioprocess = (event) => {
+        if (!stageRef.current || !audioContextRef.current) return;
+        
+        const outputBuffer = event.outputBuffer;
+        const outputData = outputBuffer.getChannelData(0);
+        
+        // Process audio samples continuously
+        for (let i = 0; i < outputBuffer.length; i++) {
+          const currentTime = audioContextRef.current.currentTime + (i / audioContextRef.current.sampleRate);
+          outputData[i] = stageRef.current.tick(currentTime);
+        }
+      };
+      
+      // Connect the processor to the audio graph
+      if (spectrumAnalyzerRef.current && spectrumAnalyzerRef.current.getMonitoringNode()) {
+        processor.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
+      } else {
+        processor.connect(audioContextRef.current.destination);
+      }
+      
       setIsPlaying(true);
-      console.log("Audio started!");
+      console.log('Audio started with continuous processing!');
     } catch (error) {
       console.error("Failed to start audio:", error);
       alert("Failed to start audio");
@@ -256,6 +293,12 @@ export default function WasmTest() {
   }
 
   function stopAudio() {
+    // Disconnect the audio processor
+    if (audioProcessorRef.current) {
+      audioProcessorRef.current.disconnect();
+      audioProcessorRef.current = null;
+    }
+    
     setIsPlaying(false);
     console.log("Audio stopped!");
   }
@@ -2596,7 +2639,7 @@ export default function WasmTest() {
         {/* Right Column - Spectrum Analyzer and Status */}
         <div className="space-y-4">
           {/* Spectrum Analyzer */}
-          <div className="sticky top-4">
+          <div>
             <SpectrumAnalyzerWithRef
               ref={spectrumAnalyzerRef}
               audioContext={audioContextRef.current}
@@ -2605,6 +2648,9 @@ export default function WasmTest() {
               height={200}
             />
           </div>
+
+          {/* Sequencer */}
+          <Sequencer stage={stageRef.current} isPlaying={isPlaying} />
 
           {/* Spectrogram Display */}
           <div>
@@ -2618,6 +2664,7 @@ export default function WasmTest() {
             />
           </div>
 
+          
           <div className="p-4 bg-gray-800 rounded">
             <h2 className="font-semibold mb-2">Status:</h2>
             <p>

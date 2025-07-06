@@ -1,10 +1,38 @@
 use crate::envelope::ADSRConfig;
 use crate::oscillator::Oscillator;
+use crate::kick::{KickDrum, KickConfig};
+use crate::snare::{SnareDrum, SnareConfig};
+use crate::hihat::{HiHat, HiHatConfig};
+use crate::tom::{TomDrum, TomConfig};
 
 pub struct Stage {
     pub sample_rate: f32,
-    pub instruments: Vec<Oscillator>,
+    pub instruments: Vec<Oscillator>, // Keep for backward compatibility
     pub limiter: BrickWallLimiter,
+    pub sequencer: Sequencer,
+    
+    // Drum instruments for sequencer
+    pub kick: KickDrum,
+    pub snare: SnareDrum,
+    pub hihat: HiHat,
+    pub tom: TomDrum,
+}
+
+/// A 16-step drum sequencer that manages pattern playback for multiple instruments
+#[derive(Debug, Clone)]
+pub struct Sequencer {
+    /// 16-step patterns for each instrument (4 instruments, 16 steps each)
+    patterns: [[bool; 16]; 4],
+    /// Current step (0-15)
+    current_step: usize,
+    /// Whether the sequencer is playing
+    is_playing: bool,
+    /// BPM (beats per minute)
+    bpm: f32,
+    /// Time of the last step in seconds
+    last_step_time: f32,
+    /// Time interval between steps in seconds
+    step_interval: f32,
 }
 
 impl Stage {
@@ -13,6 +41,13 @@ impl Stage {
             sample_rate,
             instruments: Vec::new(),
             limiter: BrickWallLimiter::new(1.0), // Default threshold at 1.0 to prevent clipping
+            sequencer: Sequencer::new(),
+            
+            // Initialize drum instruments with default presets
+            kick: KickDrum::with_config(sample_rate, KickConfig::default()),
+            snare: SnareDrum::with_config(sample_rate, SnareConfig::default()),
+            hihat: HiHat::with_config(sample_rate, HiHatConfig::closed_default()),
+            tom: TomDrum::with_config(sample_rate, TomConfig::default()),
         }
     }
 
@@ -23,10 +58,54 @@ impl Stage {
     }
 
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        // Update sequencer and trigger instruments if needed
+        if self.sequencer.is_playing {
+            self.sequencer.update(current_time);
+
+            // Check if we should trigger instruments on the current step
+            if self.sequencer.should_trigger_step(current_time) {
+                let current_step = self.sequencer.current_step;
+
+                // Trigger drum instruments based on patterns
+                // Pattern 0: Kick
+                if self.sequencer.patterns[0][current_step] {
+                    self.kick.trigger(current_time);
+                }
+                // Pattern 1: Snare
+                if self.sequencer.patterns[1][current_step] {
+                    self.snare.trigger(current_time);
+                }
+                // Pattern 2: Hi-hat
+                if self.sequencer.patterns[2][current_step] {
+                    self.hihat.trigger(current_time);
+                }
+                // Pattern 3: Tom
+                if self.sequencer.patterns[3][current_step] {
+                    self.tom.trigger(current_time);
+                }
+
+                // Basic oscillators are NOT triggered by the sequencer
+                // They should only be triggered manually via "Trigger all instruments" button
+
+                // Mark that we've processed this step
+                self.sequencer.last_step_time = current_time;
+                self.sequencer.advance_step();
+            }
+        }
+
         let mut output = 0.0;
+        
+        // Add drum instrument outputs
+        output += self.kick.tick(current_time);
+        output += self.snare.tick(current_time);
+        output += self.hihat.tick(current_time);
+        output += self.tom.tick(current_time);
+        
+        // Add legacy instruments for backward compatibility
         for instrument in &mut self.instruments {
             output += instrument.tick(current_time);
         }
+        
         // Apply limiter to the combined output
         self.limiter.process(output)
     }
@@ -139,6 +218,195 @@ impl Stage {
     /// Get the current limiter threshold
     pub fn get_limiter_threshold(&self) -> f32 {
         self.limiter.threshold
+    }
+
+    // Sequencer control methods
+
+    /// Start the sequencer
+    pub fn sequencer_play(&mut self) {
+        // Initialize with proper timing - use a small offset to ensure proper initialization
+        self.sequencer.play_at_time(0.001);
+    }
+    
+    /// Start the sequencer with a specific time
+    pub fn sequencer_play_at_time(&mut self, time: f32) {
+        self.sequencer.play_at_time(time);
+    }
+
+    /// Stop the sequencer
+    pub fn sequencer_stop(&mut self) {
+        self.sequencer.stop();
+    }
+
+    /// Reset the sequencer to step 0
+    pub fn sequencer_reset(&mut self) {
+        self.sequencer.reset();
+    }
+
+    /// Clear all patterns
+    pub fn sequencer_clear_all(&mut self) {
+        self.sequencer.clear_all();
+    }
+
+    /// Set a step for a specific instrument
+    pub fn sequencer_set_step(&mut self, instrument: usize, step: usize, enabled: bool) {
+        self.sequencer.set_step(instrument, step, enabled);
+    }
+
+    /// Get a step for a specific instrument
+    pub fn sequencer_get_step(&self, instrument: usize, step: usize) -> bool {
+        self.sequencer.get_step(instrument, step)
+    }
+
+    /// Set the BPM
+    pub fn sequencer_set_bpm(&mut self, bpm: f32) {
+        self.sequencer.set_bpm(bpm);
+    }
+
+    /// Get the current BPM
+    pub fn sequencer_get_bpm(&self) -> f32 {
+        self.sequencer.bpm
+    }
+
+    /// Get the current step (0-15)
+    pub fn sequencer_get_current_step(&self) -> usize {
+        self.sequencer.current_step
+    }
+
+    /// Check if the sequencer is playing
+    pub fn sequencer_is_playing(&self) -> bool {
+        self.sequencer.is_playing
+    }
+    
+    /// Set up default test patterns for the drums
+    pub fn sequencer_set_default_patterns(&mut self) {
+        // Clear existing patterns
+        self.sequencer.clear_all();
+        
+        // Kick: On beats 1, 5, 9, 13 (quarter notes)
+        self.sequencer.set_step(0, 0, true);  // Beat 1
+        self.sequencer.set_step(0, 4, true);  // Beat 5
+        self.sequencer.set_step(0, 8, true);  // Beat 9
+        self.sequencer.set_step(0, 12, true); // Beat 13
+        
+        // Snare: On beats 5, 13 (backbeat)
+        self.sequencer.set_step(1, 4, true);  // Beat 5
+        self.sequencer.set_step(1, 12, true); // Beat 13
+        
+        // Hi-hat: On off-beats (8th notes)
+        for i in 0..16 {
+            if i % 2 == 1 {
+                self.sequencer.set_step(2, i, true);
+            }
+        }
+        
+        // Tom: Sparse pattern on beats 7, 15
+        self.sequencer.set_step(3, 6, true);  // Beat 7
+        self.sequencer.set_step(3, 14, true); // Beat 15
+    }
+    
+    /// Get drum instrument configurations
+    pub fn get_kick_config(&self) -> KickConfig {
+        self.kick.config
+    }
+    
+    pub fn get_snare_config(&self) -> SnareConfig {
+        self.snare.config
+    }
+    
+    pub fn get_hihat_config(&self) -> HiHatConfig {
+        self.hihat.config
+    }
+    
+    pub fn get_tom_config(&self) -> TomConfig {
+        self.tom.config
+    }
+    
+    /// Set drum instrument configurations
+    pub fn set_kick_config(&mut self, config: KickConfig) {
+        self.kick.set_config(config);
+    }
+    
+    pub fn set_snare_config(&mut self, config: SnareConfig) {
+        self.snare.set_config(config);
+    }
+    
+    pub fn set_hihat_config(&mut self, config: HiHatConfig) {
+        self.hihat.set_config(config);
+    }
+    
+    pub fn set_tom_config(&mut self, config: TomConfig) {
+        self.tom.set_config(config);
+    }
+}
+
+impl Sequencer {
+    pub fn new() -> Self {
+        Self {
+            patterns: [[false; 16]; 4],
+            current_step: 0,
+            is_playing: false,
+            bpm: 120.0,
+            last_step_time: 0.0,
+            step_interval: 60.0 / (120.0 * 4.0), // 16th notes at 120 BPM
+        }
+    }
+
+    pub fn play(&mut self) {
+        self.is_playing = true;
+    }
+    
+    pub fn play_at_time(&mut self, time: f32) {
+        self.is_playing = true;
+        self.last_step_time = time;
+    }
+
+    pub fn stop(&mut self) {
+        self.is_playing = false;
+    }
+
+    pub fn reset(&mut self) {
+        self.current_step = 0;
+        self.last_step_time = 0.0;
+    }
+
+    pub fn clear_all(&mut self) {
+        self.patterns = [[false; 16]; 4];
+    }
+
+    pub fn set_step(&mut self, instrument: usize, step: usize, enabled: bool) {
+        if instrument < 4 && step < 16 {
+            self.patterns[instrument][step] = enabled;
+        }
+    }
+
+    pub fn get_step(&self, instrument: usize, step: usize) -> bool {
+        if instrument < 4 && step < 16 {
+            self.patterns[instrument][step]
+        } else {
+            false
+        }
+    }
+
+    pub fn set_bpm(&mut self, bpm: f32) {
+        // Clamp BPM to reasonable range
+        self.bpm = bpm.max(60.0).min(180.0);
+        // Recalculate step interval (16th notes)
+        self.step_interval = 60.0 / (self.bpm * 4.0);
+    }
+
+    pub fn update(&mut self, current_time: f32) {
+        // This method is called from tick() to update internal state
+        // The actual triggering logic is handled in tick()
+    }
+
+    pub fn should_trigger_step(&self, current_time: f32) -> bool {
+        // Check if enough time has passed for the next step
+        current_time - self.last_step_time >= self.step_interval
+    }
+
+    pub fn advance_step(&mut self) {
+        self.current_step = (self.current_step + 1) % 16;
     }
 }
 
