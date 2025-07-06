@@ -199,6 +199,11 @@ pub mod web {
         pub fn sequencer_play(&mut self) {
             self.stage.sequencer_play();
         }
+        
+        #[wasm_bindgen]
+        pub fn sequencer_play_at_time(&mut self, time: f32) {
+            self.stage.sequencer_play_at_time(time);
+        }
 
         #[wasm_bindgen]
         pub fn sequencer_stop(&mut self) {

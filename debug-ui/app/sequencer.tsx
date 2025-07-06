@@ -6,9 +6,10 @@ import { WasmStage } from '../public/wasm/oscillator.js';
 interface SequencerProps {
   stage: WasmStage | null;
   isPlaying: boolean;
+  audioContext?: AudioContext | null;
 }
 
-export default function Sequencer({ stage, isPlaying }: SequencerProps) {
+export default function Sequencer({ stage, isPlaying, audioContext }: SequencerProps) {
   const [patterns, setPatterns] = useState<boolean[][]>([
     new Array(16).fill(false), // Bass Drum
     new Array(16).fill(false), // Snare
@@ -41,9 +42,25 @@ export default function Sequencer({ stage, isPlaying }: SequencerProps) {
     return () => clearInterval(interval);
   }, [stage, sequencerPlaying]);
 
-  // Sync patterns from WASM
+  // Sync patterns from WASM and set up default pattern
   useEffect(() => {
     if (!stage) return;
+    
+    // Set up a default pattern for testing
+    // Bass drum on steps 1, 5, 9, 13 (beats 1, 2, 3, 4)
+    stage.sequencer_set_step(0, 0, true);
+    stage.sequencer_set_step(0, 4, true);
+    stage.sequencer_set_step(0, 8, true);
+    stage.sequencer_set_step(0, 12, true);
+    
+    // Snare on steps 5, 13 (beats 2, 4)
+    stage.sequencer_set_step(1, 4, true);
+    stage.sequencer_set_step(1, 12, true);
+    
+    // Hi-hat on every other step
+    for (let i = 0; i < 16; i += 2) {
+      stage.sequencer_set_step(2, i, true);
+    }
     
     const syncedPatterns = patterns.map((pattern, instrumentIndex) =>
       pattern.map((_, stepIndex) => stage.sequencer_get_step(instrumentIndex, stepIndex))
@@ -72,7 +89,14 @@ export default function Sequencer({ stage, isPlaying }: SequencerProps) {
       stage.sequencer_stop();
       setSequencerPlaying(false);
     } else {
-      stage.sequencer_play();
+      // Use sequencer_play_at_time with current time for proper timing
+      const currentTime = audioContext ? audioContext.currentTime : performance.now() / 1000;
+      
+      if (typeof stage.sequencer_play_at_time === 'function') {
+        stage.sequencer_play_at_time(currentTime);
+      } else {
+        stage.sequencer_play();
+      }
       setSequencerPlaying(true);
     }
   };
