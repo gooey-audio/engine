@@ -101,7 +101,7 @@ export default function Mixer({
                 step="0.01"
                 value={instrument.volume}
                 onChange={(e) => handleVolumeChange(instrument, parseFloat(e.target.value))}
-                className="h-24 w-4 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-vertical"
+                className="h-24 w-4 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-track]:bg-gray-600 [&::-webkit-slider-track]:rounded [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gray-500 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-gray-100 [&::-webkit-slider-thumb]:hover:border-gray-600 [&::-moz-range-track]:bg-gray-600 [&::-moz-range-track]:rounded [&::-moz-range-track]:h-1 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gray-500 [&::-moz-range-thumb]:cursor-pointer"
                 style={{
                   writingMode: 'vertical-lr',
                   direction: 'rtl',
