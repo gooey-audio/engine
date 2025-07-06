@@ -10,6 +10,7 @@ import init, {
 } from "../public/wasm/oscillator.js";
 
 import Sequencer from "./sequencer";
+import Mixer from "./mixer";
 import { SpectrumAnalyzerWithRef } from "./spectrum-analyzer";
 import { SpectrogramDisplayWithRef } from "./spectrogram-display";
 
@@ -65,7 +66,7 @@ export default function WasmTest() {
     click: 0.3,
     decay: 0.8,
     pitchDrop: 0.6,
-    volume: 0.8,
+    volume: 0.6,
   });
 
   // Hi-hat specific state
@@ -76,7 +77,7 @@ export default function WasmTest() {
     brightness: 0.6,
     decayTime: 0.1,
     attackTime: 0.001,
-    volume: 0.8,
+    volume: 0.6,
     isOpen: false,
   });
 
@@ -89,7 +90,7 @@ export default function WasmTest() {
     crack: 0.5,
     decay: 0.15,
     pitchDrop: 0.3,
-    volume: 0.8,
+    volume: 0.6,
   });
 
   // Tom specific state
@@ -100,7 +101,7 @@ export default function WasmTest() {
     punch: 0.4,
     decay: 0.4,
     pitchDrop: 0.3,
-    volume: 0.8,
+    volume: 0.6,
   });
 
   // Keyboard mapping state
@@ -692,7 +693,7 @@ export default function WasmTest() {
           click: 0.5,
           decay: 0.4,
           pitchDrop: 0.8,
-          volume: 0.8,
+          volume: 0.6,
         });
         break;
       default: // default
@@ -703,7 +704,7 @@ export default function WasmTest() {
           click: 0.3,
           decay: 0.8,
           pitchDrop: 0.6,
-          volume: 0.8,
+          volume: 0.6,
         });
     }
   }
@@ -809,7 +810,7 @@ export default function WasmTest() {
           brightness: 0.6,
           decayTime: 0.1,
           attackTime: 0.001,
-          volume: 0.8,
+          volume: 0.6,
           isOpen: false,
         });
         break;
@@ -842,7 +843,7 @@ export default function WasmTest() {
           brightness: 1.0,
           decayTime: 1.2,
           attackTime: 0.001,
-          volume: 0.8,
+          volume: 0.6,
           isOpen: true,
         });
         break;
@@ -875,7 +876,7 @@ export default function WasmTest() {
           brightness: 0.6,
           decayTime: 0.1,
           attackTime: 0.001,
-          volume: 0.8,
+          volume: 0.6,
           isOpen: false,
         });
     }
@@ -1087,7 +1088,7 @@ export default function WasmTest() {
           crack: 0.8,
           decay: 0.08,
           pitchDrop: 0.5,
-          volume: 0.8,
+          volume: 0.6,
         });
         break;
       case "fat":
@@ -1109,7 +1110,7 @@ export default function WasmTest() {
           crack: 0.5,
           decay: 0.15,
           pitchDrop: 0.3,
-          volume: 0.8,
+          volume: 0.6,
         });
     }
   }
@@ -1254,7 +1255,7 @@ export default function WasmTest() {
           punch: 0.4,
           decay: 0.4,
           pitchDrop: 0.3,
-          volume: 0.8,
+          volume: 0.6,
         });
         break;
       case "low_tom":
@@ -1284,7 +1285,7 @@ export default function WasmTest() {
           punch: 0.4,
           decay: 0.4,
           pitchDrop: 0.3,
-          volume: 0.8,
+          volume: 0.6,
         });
     }
   }
@@ -2651,6 +2652,19 @@ export default function WasmTest() {
 
           {/* Sequencer */}
           <Sequencer stage={stageRef.current} isPlaying={isPlaying} />
+
+          {/* Mixer */}
+          <Mixer
+            kickVolume={kickConfig.volume}
+            snareVolume={snareConfig.volume}
+            hihatVolume={hihatConfig.volume}
+            tomVolume={tomConfig.volume}
+            onKickVolumeChange={(volume) => handleKickConfigChange('volume', volume)}
+            onSnareVolumeChange={(volume) => handleSnareConfigChange('volume', volume)}
+            onHihatVolumeChange={(volume) => handleHihatConfigChange('volume', volume)}
+            onTomVolumeChange={(volume) => handleTomConfigChange('volume', volume)}
+            isLoaded={isLoaded}
+          />
 
           {/* Spectrogram Display */}
           <div>

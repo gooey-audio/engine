@@ -24,3 +24,47 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Mixer slider styles */
+.slider-vertical {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider-vertical::-webkit-slider-track {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.slider-vertical::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #ffffff;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #6b7280;
+  cursor: pointer;
+}
+
+.slider-vertical::-webkit-slider-thumb:hover {
+  background: #f3f4f6;
+  border-color: #4b5563;
+}
+
+.slider-vertical::-moz-range-track {
+  background: #374151;
+  border-radius: 4px;
+  height: 4px;
+}
+
+.slider-vertical::-moz-range-thumb {
+  background: #ffffff;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #6b7280;
+  cursor: pointer;
+}
