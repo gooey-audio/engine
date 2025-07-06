@@ -1,4 +1,6 @@
 use crate::envelope::{ADSRConfig, Envelope};
+use crate::filters::ResonantHighpassFilter;
+use crate::fm_snap::FMSnapSynthesizer;
 use crate::oscillator::Oscillator;
 use crate::waveform::Waveform;
 
@@ -65,8 +67,11 @@ pub struct KickDrum {
     pub base_frequency: f32,
     pub pitch_start_multiplier: f32,
 
-    // High-pass filter state for click oscillator
-    pub click_filter_state: f32,
+    // High-pass filter for click oscillator
+    pub click_filter: ResonantHighpassFilter,
+    
+    // FM snap synthesizer for beater sound
+    pub fm_snap: FMSnapSynthesizer,
 
     pub is_active: bool,
 }
@@ -87,7 +92,8 @@ impl KickDrum {
             pitch_envelope: Envelope::new(),
             base_frequency: config.kick_frequency,
             pitch_start_multiplier: 1.0 + config.pitch_drop * 2.0, // Start 1-3x higher
-            click_filter_state: 0.0,
+            click_filter: ResonantHighpassFilter::new(sample_rate, 8000.0, 4.0),
+            fm_snap: FMSnapSynthesizer::new(sample_rate),
             is_active: false,
         };
 
@@ -161,8 +167,11 @@ impl KickDrum {
         // Trigger pitch envelope
         self.pitch_envelope.trigger(time);
 
+        // Trigger FM snap for beater sound
+        self.fm_snap.trigger(time);
+
         // Reset filter state for clean click transients
-        self.click_filter_state = 0.0;
+        self.click_filter.reset();
     }
 
     pub fn release(&mut self, time: f32) {
@@ -197,14 +206,18 @@ impl KickDrum {
         let raw_click_output = self.click_oscillator.tick(current_time);
         
         // Apply resonant high-pass filtering to click for more realistic sound
-        let filtered_click_output = self.apply_resonant_highpass_filter(raw_click_output);
+        let filtered_click_output = self.click_filter.process(raw_click_output);
 
-        let total_output = sub_output + punch_output + filtered_click_output;
+        // Add FM snap for beater sound
+        let fm_snap_output = self.fm_snap.tick(current_time);
+
+        let total_output = sub_output + punch_output + filtered_click_output + fm_snap_output;
 
         // Check if kick is still active
         if !self.sub_oscillator.envelope.is_active
             && !self.punch_oscillator.envelope.is_active
             && !self.click_oscillator.envelope.is_active
+            && !self.fm_snap.is_active()
         {
             self.is_active = false;
         }
@@ -252,39 +265,4 @@ impl KickDrum {
         self.pitch_start_multiplier = 1.0 + self.config.pitch_drop * 2.0;
     }
 
-    fn apply_resonant_highpass_filter(&mut self, input: f32) -> f32 {
-        // Resonant high-pass filter implementation
-        // Cutoff frequency around 8kHz for click enhancement
-        let cutoff_freq = 8000.0;
-        let resonance = 4.0; // Increased resonance for more pronounced filtering
-        
-        // Calculate filter coefficients
-        let omega = 2.0 * std::f32::consts::PI * cutoff_freq / self.sample_rate;
-        let sin_omega = omega.sin();
-        let cos_omega = omega.cos();
-        let alpha = sin_omega / (2.0 * resonance);
-        
-        // High-pass filter coefficients
-        let b0 = (1.0 + cos_omega) / 2.0;
-        let b1 = -(1.0 + cos_omega);
-        let b2 = (1.0 + cos_omega) / 2.0;
-        let a0 = 1.0 + alpha;
-        let a1 = -2.0 * cos_omega;
-        let a2 = 1.0 - alpha;
-        
-        // Normalize coefficients
-        let norm_b0 = b0 / a0;
-        let norm_b1 = b1 / a0;
-        let norm_b2 = b2 / a0;
-        let norm_a1 = a1 / a0;
-        let norm_a2 = a2 / a0;
-        
-        // Apply filter (simple one-pole approximation for efficiency)
-        let alpha_simple = 1.0 - (-2.0 * std::f32::consts::PI * cutoff_freq / self.sample_rate).exp();
-        let high_pass = input - self.click_filter_state;
-        self.click_filter_state += alpha_simple * high_pass;
-        
-        // Add resonance boost
-        high_pass * (1.0 + resonance * 0.1)
-    }
 }
