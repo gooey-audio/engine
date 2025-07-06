@@ -1,21 +1,23 @@
 import React from "react";
 
+interface KickConfig {
+  frequency: number;
+  punch: number;
+  sub: number;
+  click: number;
+  decay: number;
+  pitchDrop: number;
+  volume: number;
+}
+
 interface KickDrumTabProps {
   isLoaded: boolean;
   isPlaying: boolean;
   kickPreset: string;
-  kickConfig: {
-    frequency: number;
-    punch: number;
-    sub: number;
-    click: number;
-    decay: number;
-    pitchDrop: number;
-    volume: number;
-  };
+  kickConfig: KickConfig;
   triggerKickDrum: () => void;
   releaseKickDrum: () => void;
-  handleKickConfigChange: (param: string, value: number) => void;
+  handleKickConfigChange: (param: keyof KickConfig, value: number) => void;
   handleKickPresetChange: (preset: string) => void;
 }
 
