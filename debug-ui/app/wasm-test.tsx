@@ -106,6 +106,9 @@ export default function WasmTest() {
   // Keyboard mapping state
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
   const [keyboardEnabled, setKeyboardEnabled] = useState(true);
+  
+  // Saturation control state
+  const [saturation, setSaturation] = useState(0.0);
 
   // Keyboard mapping configuration
   const keyMappings = {
@@ -1289,6 +1292,13 @@ export default function WasmTest() {
     }
   }
 
+  function handleSaturationChange(value: number) {
+    if (!stageRef.current) return;
+    
+    setSaturation(value);
+    stageRef.current.set_saturation(value);
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center">
@@ -1317,6 +1327,28 @@ export default function WasmTest() {
           >
             {isPlaying ? "Stop Audio" : "Start Audio"}
           </button>
+
+          {/* Saturation Control */}
+          <div className="border border-gray-600 rounded p-3 bg-gray-800">
+            <h3 className="font-semibold text-lg mb-2">🎛️ Master Saturation</h3>
+            <div className="flex items-center space-x-3">
+              <label className="text-white font-medium min-w-fit">Saturation:</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={saturation}
+                onChange={(e) => handleSaturationChange(parseFloat(e.target.value))}
+                className="flex-1"
+                disabled={!isLoaded}
+              />
+              <span className="text-white font-mono min-w-fit">{saturation.toFixed(2)}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Adds harmonic distortion to the final audio output
+            </p>
+          </div>
 
           {/* Keyboard Mapping Widget */}
           <div className="border-t pt-4">
