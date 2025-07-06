@@ -69,7 +69,7 @@ pub struct KickDrum {
 
     // High-pass filter for click oscillator
     pub click_filter: ResonantHighpassFilter,
-    
+
     // FM snap synthesizer for beater sound
     pub fm_snap: FMSnapSynthesizer,
 
@@ -110,9 +110,9 @@ impl KickDrum {
         self.sub_oscillator
             .set_volume(config.sub_amount * config.volume);
         self.sub_oscillator.set_adsr(ADSRConfig::new(
-            0.001,             // Very fast attack
-            config.decay_time, // Synchronized decay time
-            0.0,               // No sustain
+            0.001,                   // Very fast attack
+            config.decay_time,       // Synchronized decay time
+            0.0,                     // No sustain
             config.decay_time * 0.2, // Synchronized release
         ));
 
@@ -122,9 +122,9 @@ impl KickDrum {
         self.punch_oscillator
             .set_volume(config.punch_amount * config.volume * 0.7);
         self.punch_oscillator.set_adsr(ADSRConfig::new(
-            0.001,             // Very fast attack
-            config.decay_time, // Synchronized decay time
-            0.0,               // No sustain
+            0.001,                   // Very fast attack
+            config.decay_time,       // Synchronized decay time
+            0.0,                     // No sustain
             config.decay_time * 0.2, // Synchronized release
         ));
 
@@ -134,17 +134,17 @@ impl KickDrum {
         self.click_oscillator
             .set_volume(config.click_amount * config.volume * 0.3);
         self.click_oscillator.set_adsr(ADSRConfig::new(
-            0.001,                     // Very fast attack
-            config.decay_time * 0.2,   // Much shorter decay time for click
-            0.0,                       // No sustain
-            config.decay_time * 0.02,  // Extremely short release for click
+            0.001,                    // Very fast attack
+            config.decay_time * 0.2,  // Much shorter decay time for click
+            0.0,                      // No sustain
+            config.decay_time * 0.02, // Extremely short release for click
         ));
 
         // Pitch envelope: Fast attack, synchronized decay for frequency sweeping
         self.pitch_envelope.set_config(ADSRConfig::new(
-            0.001,             // Instant attack
-            config.decay_time, // Synchronized decay time
-            0.0,               // Drop to base frequency
+            0.001,                   // Instant attack
+            config.decay_time,       // Synchronized decay time
+            0.0,                     // Drop to base frequency
             config.decay_time * 0.2, // Synchronized release
         ));
     }
@@ -204,7 +204,7 @@ impl KickDrum {
         let sub_output = self.sub_oscillator.tick(current_time);
         let punch_output = self.punch_oscillator.tick(current_time);
         let raw_click_output = self.click_oscillator.tick(current_time);
-        
+
         // Apply resonant high-pass filtering to click for more realistic sound
         let filtered_click_output = self.click_filter.process(raw_click_output);
 
@@ -264,5 +264,4 @@ impl KickDrum {
         self.config.pitch_drop = pitch_drop.clamp(0.0, 1.0);
         self.pitch_start_multiplier = 1.0 + self.config.pitch_drop * 2.0;
     }
-
 }
