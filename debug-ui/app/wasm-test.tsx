@@ -655,7 +655,9 @@ export default function WasmTest() {
         break;
       case "volume":
         console.log(`[DEBUG] Setting kick volume to ${value}`);
-        kickDrumRef.current.set_volume(value);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(0, value);
+        }
         break;
     }
   }
@@ -919,7 +921,9 @@ export default function WasmTest() {
         break;
       case "volume":
         console.log(`[DEBUG] Setting hihat volume to ${value}`);
-        hihatRef.current.set_volume(value as number);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(2, value as number);
+        }
         break;
       case "isOpen":
         hihatRef.current.set_open(value as boolean);
@@ -1056,7 +1060,9 @@ export default function WasmTest() {
         break;
       case "volume":
         console.log(`[DEBUG] Setting snare volume to ${value}`);
-        snareRef.current.set_volume(value);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(1, value);
+        }
         break;
     }
   }
@@ -1239,7 +1245,9 @@ export default function WasmTest() {
         break;
       case "volume":
         console.log(`[DEBUG] Setting tom volume to ${value}`);
-        tomRef.current.set_volume(value);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(3, value);
+        }
         break;
     }
   }
