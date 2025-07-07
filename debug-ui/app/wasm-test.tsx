@@ -110,6 +110,11 @@ export default function WasmTest() {
   // Saturation control state
   const [saturation, setSaturation] = useState(0.0);
 
+  // Chorus effect state
+  const [chorusEnabled, setChorusEnabled] = useState(false);
+  const [chorusMix, setChorusMix] = useState(0.5);
+  const [chorusIntensity, setChorusIntensity] = useState(0.7);
+
   // Keyboard mapping configuration
   const keyMappings = {
     a: {
@@ -1299,6 +1304,27 @@ export default function WasmTest() {
     stageRef.current.set_saturation(value);
   }
 
+  function handleChorusEnabledChange(enabled: boolean) {
+    if (!stageRef.current) return;
+    
+    setChorusEnabled(enabled);
+    stageRef.current.set_chorus_enabled(enabled);
+  }
+
+  function handleChorusMixChange(value: number) {
+    if (!stageRef.current) return;
+    
+    setChorusMix(value);
+    stageRef.current.set_chorus_mix(value);
+  }
+
+  function handleChorusIntensityChange(value: number) {
+    if (!stageRef.current) return;
+    
+    setChorusIntensity(value);
+    stageRef.current.set_chorus_intensity(value);
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center">
@@ -1347,6 +1373,65 @@ export default function WasmTest() {
             </div>
             <p className="text-xs text-gray-400 mt-1">
               Adds harmonic distortion to the final audio output
+            </p>
+          </div>
+
+          {/* Chorus Effect Control */}
+          <div className="border border-gray-600 rounded p-3 bg-gray-800">
+            <h3 className="font-semibold text-lg mb-2">🎵 Chorus Effect</h3>
+            
+            {/* Chorus Enable Toggle */}
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-white font-medium">Enable Chorus:</label>
+              <button
+                onClick={() => handleChorusEnabledChange(!chorusEnabled)}
+                disabled={!isLoaded}
+                className={`px-3 py-1 text-sm font-medium rounded transition-colors disabled:cursor-not-allowed ${
+                  chorusEnabled
+                    ? "bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-600"
+                    : "bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-600"
+                }`}
+              >
+                {chorusEnabled ? "🔊 ON" : "🔇 OFF"}
+              </button>
+            </div>
+            
+            {/* Chorus Intensity Control */}
+            <div className="flex items-center space-x-3 mb-3">
+              <label className="text-white font-medium min-w-fit">Intensity:</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={chorusIntensity}
+                onChange={(e) => handleChorusIntensityChange(parseFloat(e.target.value))}
+                className="flex-1"
+                disabled={!isLoaded}
+              />
+              <span className="text-white font-mono min-w-fit">{chorusIntensity.toFixed(2)}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1 mb-3">
+              Controls the strength of the chorus effect
+            </p>
+            
+            {/* Chorus Mix Control */}
+            <div className="flex items-center space-x-3">
+              <label className="text-white font-medium min-w-fit">Mix Amount:</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={chorusMix}
+                onChange={(e) => handleChorusMixChange(parseFloat(e.target.value))}
+                className="flex-1"
+                disabled={!isLoaded}
+              />
+              <span className="text-white font-mono min-w-fit">{chorusMix.toFixed(2)}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Adds depth and movement to the audio with modulated delay
             </p>
           </div>
 

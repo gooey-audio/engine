@@ -4,6 +4,7 @@ use crate::kick::{KickDrum, KickConfig};
 use crate::snare::{SnareDrum, SnareConfig};
 use crate::hihat::{HiHat, HiHatConfig};
 use crate::tom::{TomDrum, TomConfig};
+use crate::effects::Chorus;
 
 pub struct Stage {
     pub sample_rate: f32,
@@ -19,6 +20,9 @@ pub struct Stage {
     
     // Harmonic distortion settings
     pub saturation: f32, // 0.0 to 1.0, where 0.0 is no distortion
+    
+    // Chorus effect
+    pub chorus: Chorus,
 }
 
 /// A 16-step drum sequencer that manages pattern playback for multiple instruments
@@ -54,6 +58,9 @@ impl Stage {
             
             // Initialize harmonic distortion
             saturation: 0.0, // No distortion by default
+            
+            // Initialize chorus effect
+            chorus: Chorus::new(sample_rate),
         }
     }
 
@@ -116,6 +123,9 @@ impl Stage {
         if self.saturation > 0.0 {
             output = self.apply_harmonic_distortion(output);
         }
+        
+        // Apply chorus effect
+        output = self.chorus.process(output);
         
         // Apply limiter to the combined output
         self.limiter.process(output)
@@ -372,6 +382,68 @@ impl Stage {
     /// Get the current saturation level
     pub fn get_saturation(&self) -> f32 {
         self.saturation
+    }
+    
+    // Chorus effect control methods
+    
+    /// Enable or disable the chorus effect
+    pub fn set_chorus_enabled(&mut self, enabled: bool) {
+        self.chorus.set_enabled(enabled);
+    }
+    
+    /// Check if the chorus effect is enabled
+    pub fn is_chorus_enabled(&self) -> bool {
+        self.chorus.is_enabled()
+    }
+    
+    /// Set the chorus mix amount (0.0 = dry, 1.0 = wet)
+    pub fn set_chorus_mix(&mut self, mix: f32) {
+        self.chorus.set_mix(mix);
+    }
+    
+    /// Get the current chorus mix amount
+    pub fn get_chorus_mix(&self) -> f32 {
+        self.chorus.get_mix()
+    }
+    
+    /// Set the chorus LFO frequency in Hz
+    pub fn set_chorus_lfo_frequency(&mut self, frequency: f32) {
+        self.chorus.set_lfo_frequency(frequency);
+    }
+    
+    /// Get the current chorus LFO frequency
+    pub fn get_chorus_lfo_frequency(&self) -> f32 {
+        self.chorus.get_lfo_frequency()
+    }
+    
+    /// Set the chorus base delay time in milliseconds
+    pub fn set_chorus_base_delay_ms(&mut self, delay_ms: f32) {
+        self.chorus.set_base_delay_ms(delay_ms);
+    }
+    
+    /// Get the current chorus base delay time in milliseconds
+    pub fn get_chorus_base_delay_ms(&self) -> f32 {
+        self.chorus.get_base_delay_ms()
+    }
+    
+    /// Set the chorus modulation depth in milliseconds
+    pub fn set_chorus_modulation_depth_ms(&mut self, depth_ms: f32) {
+        self.chorus.set_modulation_depth_ms(depth_ms);
+    }
+    
+    /// Get the current chorus modulation depth in milliseconds
+    pub fn get_chorus_modulation_depth_ms(&self) -> f32 {
+        self.chorus.get_modulation_depth_ms()
+    }
+    
+    /// Set the chorus intensity (0.0 = subtle, 1.0 = intense)
+    pub fn set_chorus_intensity(&mut self, intensity: f32) {
+        self.chorus.set_intensity(intensity);
+    }
+    
+    /// Get the current chorus intensity
+    pub fn get_chorus_intensity(&self) -> f32 {
+        self.chorus.get_intensity()
     }
 }
 

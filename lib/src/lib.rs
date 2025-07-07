@@ -1,6 +1,7 @@
 //! Shared audio engine logic for both native (CPAL) and WASM (web)
 
 pub mod audio_state;
+pub mod effects;
 pub mod envelope;
 pub mod filters;
 pub mod fm_snap;
@@ -362,6 +363,37 @@ pub mod web {
         #[wasm_bindgen]
         pub fn get_saturation(&self) -> f32 {
             self.stage.get_saturation()
+        }
+        
+        // Chorus effect control methods
+        #[wasm_bindgen]
+        pub fn set_chorus_enabled(&mut self, enabled: bool) {
+            self.stage.set_chorus_enabled(enabled);
+        }
+        
+        #[wasm_bindgen]
+        pub fn is_chorus_enabled(&self) -> bool {
+            self.stage.is_chorus_enabled()
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_chorus_mix(&mut self, mix: f32) {
+            self.stage.set_chorus_mix(mix);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_chorus_mix(&self) -> f32 {
+            self.stage.get_chorus_mix()
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_chorus_intensity(&mut self, intensity: f32) {
+            self.stage.set_chorus_intensity(intensity);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_chorus_intensity(&self) -> f32 {
+            self.stage.get_chorus_intensity()
         }
     }
 
