@@ -435,6 +435,16 @@ impl Stage {
     pub fn get_chorus_modulation_depth_ms(&self) -> f32 {
         self.chorus.get_modulation_depth_ms()
     }
+    
+    /// Set the chorus intensity (0.0 = subtle, 1.0 = intense)
+    pub fn set_chorus_intensity(&mut self, intensity: f32) {
+        self.chorus.set_intensity(intensity);
+    }
+    
+    /// Get the current chorus intensity
+    pub fn get_chorus_intensity(&self) -> f32 {
+        self.chorus.get_intensity()
+    }
 }
 
 impl Sequencer {

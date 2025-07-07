@@ -19,6 +19,8 @@ pub struct Chorus {
     modulation_depth_samples: f32,
     /// Wet/dry mix (0.0 = dry, 1.0 = wet)
     mix: f32,
+    /// Intensity of the chorus effect (0.0 = subtle, 1.0 = intense)
+    intensity: f32,
     /// Whether the chorus is enabled
     enabled: bool,
 }
@@ -34,10 +36,11 @@ impl Chorus {
             delay_buffer: VecDeque::with_capacity(max_delay_samples + 1),
             max_delay_samples,
             lfo_phase: 0.0,
-            lfo_frequency: 0.5, // 0.5 Hz LFO
+            lfo_frequency: 1.2, // 1.2 Hz LFO for more classic chorus
             base_delay_samples: 15.0 * sample_rate / 1000.0, // 15ms base delay
-            modulation_depth_samples: 5.0 * sample_rate / 1000.0, // ±5ms modulation
+            modulation_depth_samples: 10.0 * sample_rate / 1000.0, // ±10ms modulation
             mix: 0.5, // 50% wet
+            intensity: 0.7, // 70% intensity by default
             enabled: false,
         }
     }
@@ -56,9 +59,10 @@ impl Chorus {
             self.delay_buffer.pop_front();
         }
         
-        // Calculate current delay time using LFO
+        // Calculate current delay time using LFO, scaled by intensity
         let lfo_value = (self.lfo_phase * 2.0 * std::f32::consts::PI).sin();
-        let current_delay = self.base_delay_samples + (lfo_value * self.modulation_depth_samples);
+        let scaled_modulation = self.modulation_depth_samples * self.intensity;
+        let current_delay = self.base_delay_samples + (lfo_value * scaled_modulation);
         
         // Ensure delay is within bounds
         let delay_samples = current_delay.max(1.0).min(self.delay_buffer.len() as f32 - 1.0);
@@ -66,8 +70,9 @@ impl Chorus {
         // Get delayed sample using linear interpolation
         let delayed_sample = self.get_delayed_sample(delay_samples);
         
-        // Update LFO phase
-        self.lfo_phase += self.lfo_frequency / self.sample_rate;
+        // Update LFO phase, scaled by intensity for more dynamic modulation
+        let scaled_lfo_frequency = self.lfo_frequency * (0.5 + self.intensity * 0.5);
+        self.lfo_phase += scaled_lfo_frequency / self.sample_rate;
         if self.lfo_phase >= 1.0 {
             self.lfo_phase -= 1.0;
         }
@@ -158,5 +163,15 @@ impl Chorus {
     /// Get the current modulation depth in milliseconds
     pub fn get_modulation_depth_ms(&self) -> f32 {
         self.modulation_depth_samples * 1000.0 / self.sample_rate
+    }
+    
+    /// Set the chorus intensity (0.0 = subtle, 1.0 = intense)
+    pub fn set_intensity(&mut self, intensity: f32) {
+        self.intensity = intensity.clamp(0.0, 1.0);
+    }
+    
+    /// Get the current intensity
+    pub fn get_intensity(&self) -> f32 {
+        self.intensity
     }
 }

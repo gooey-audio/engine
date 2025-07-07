@@ -113,6 +113,7 @@ export default function WasmTest() {
   // Chorus effect state
   const [chorusEnabled, setChorusEnabled] = useState(false);
   const [chorusMix, setChorusMix] = useState(0.5);
+  const [chorusIntensity, setChorusIntensity] = useState(0.7);
 
   // Keyboard mapping configuration
   const keyMappings = {
@@ -1317,6 +1318,13 @@ export default function WasmTest() {
     stageRef.current.set_chorus_mix(value);
   }
 
+  function handleChorusIntensityChange(value: number) {
+    if (!stageRef.current) return;
+    
+    setChorusIntensity(value);
+    stageRef.current.set_chorus_intensity(value);
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center">
@@ -1387,6 +1395,25 @@ export default function WasmTest() {
                 {chorusEnabled ? "🔊 ON" : "🔇 OFF"}
               </button>
             </div>
+            
+            {/* Chorus Intensity Control */}
+            <div className="flex items-center space-x-3 mb-3">
+              <label className="text-white font-medium min-w-fit">Intensity:</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={chorusIntensity}
+                onChange={(e) => handleChorusIntensityChange(parseFloat(e.target.value))}
+                className="flex-1"
+                disabled={!isLoaded}
+              />
+              <span className="text-white font-mono min-w-fit">{chorusIntensity.toFixed(2)}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1 mb-3">
+              Controls the strength of the chorus effect
+            </p>
             
             {/* Chorus Mix Control */}
             <div className="flex items-center space-x-3">

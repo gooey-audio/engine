@@ -385,6 +385,16 @@ pub mod web {
         pub fn get_chorus_mix(&self) -> f32 {
             self.stage.get_chorus_mix()
         }
+        
+        #[wasm_bindgen]
+        pub fn set_chorus_intensity(&mut self, intensity: f32) {
+            self.stage.set_chorus_intensity(intensity);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_chorus_intensity(&self) -> f32 {
+            self.stage.get_chorus_intensity()
+        }
     }
 
     #[wasm_bindgen]
