@@ -1,6 +1,7 @@
 //! Shared audio engine logic for both native (CPAL) and WASM (web)
 
 pub mod audio_state;
+pub mod effects;
 pub mod envelope;
 pub mod filters;
 pub mod fm_snap;

@@ -4,7 +4,7 @@ use crate::kick::{KickDrum, KickConfig};
 use crate::snare::{SnareDrum, SnareConfig};
 use crate::hihat::{HiHat, HiHatConfig};
 use crate::tom::{TomDrum, TomConfig};
-use crate::filters::Chorus;
+use crate::effects::Chorus;
 
 pub struct Stage {
     pub sample_rate: f32,
