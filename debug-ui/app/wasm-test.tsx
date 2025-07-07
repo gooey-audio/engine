@@ -657,6 +657,16 @@ export default function WasmTest() {
         console.log(`[DEBUG] Setting kick volume to ${value}`);
         if (stageRef.current) {
           stageRef.current.set_instrument_volume(0, value);
+          // Update stage's internal kick drum volume (used by sequencer)
+          stageRef.current.set_kick_config(
+            kickConfig.frequency,
+            kickConfig.punch,
+            kickConfig.sub,
+            kickConfig.click,
+            kickConfig.decay,
+            kickConfig.pitchDrop,
+            value
+          );
         }
         if (kickDrumRef.current) {
           kickDrumRef.current.set_volume(value);
@@ -926,6 +936,16 @@ export default function WasmTest() {
         console.log(`[DEBUG] Setting hihat volume to ${value}`);
         if (stageRef.current) {
           stageRef.current.set_instrument_volume(2, value as number);
+          // Update stage's internal hihat drum volume (used by sequencer)
+          stageRef.current.set_hihat_config(
+            hihatConfig.baseFrequency,
+            hihatConfig.resonance,
+            hihatConfig.brightness,
+            hihatConfig.decayTime,
+            hihatConfig.attackTime,
+            value as number,
+            hihatConfig.isOpen
+          );
         }
         if (hihatRef.current) {
           hihatRef.current.set_volume(value as number);
@@ -1068,6 +1088,16 @@ export default function WasmTest() {
         console.log(`[DEBUG] Setting snare volume to ${value}`);
         if (stageRef.current) {
           stageRef.current.set_instrument_volume(1, value);
+          // Update stage's internal snare drum volume (used by sequencer)
+          stageRef.current.set_snare_config(
+            snareConfig.frequency,
+            snareConfig.tonal,
+            snareConfig.noise,
+            snareConfig.crack,
+            snareConfig.decay,
+            snareConfig.pitchDrop,
+            value
+          );
         }
         if (snareRef.current) {
           snareRef.current.set_volume(value);
@@ -1256,6 +1286,15 @@ export default function WasmTest() {
         console.log(`[DEBUG] Setting tom volume to ${value}`);
         if (stageRef.current) {
           stageRef.current.set_instrument_volume(3, value);
+          // Update stage's internal tom drum volume (used by sequencer)
+          stageRef.current.set_tom_config(
+            tomConfig.frequency,
+            tomConfig.tonal,
+            tomConfig.punch,
+            tomConfig.decay,
+            tomConfig.pitchDrop,
+            value
+          );
         }
         if (tomRef.current) {
           tomRef.current.set_volume(value);
