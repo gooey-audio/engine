@@ -10,6 +10,7 @@ import init, {
 } from "../public/wasm/oscillator.js";
 
 import Sequencer from "./sequencer";
+import Mixer from "./mixer";
 import { SpectrumAnalyzerWithRef } from "./spectrum-analyzer";
 import { SpectrogramDisplayWithRef } from "./spectrogram-display";
 
@@ -65,7 +66,7 @@ export default function WasmTest() {
     click: 0.3,
     decay: 0.8,
     pitchDrop: 0.6,
-    volume: 0.8,
+    volume: 0.6,
   });
 
   // Hi-hat specific state
@@ -76,7 +77,7 @@ export default function WasmTest() {
     brightness: 0.6,
     decayTime: 0.1,
     attackTime: 0.001,
-    volume: 0.8,
+    volume: 0.6,
     isOpen: false,
   });
 
@@ -89,7 +90,7 @@ export default function WasmTest() {
     crack: 0.5,
     decay: 0.15,
     pitchDrop: 0.3,
-    volume: 0.8,
+    volume: 0.6,
   });
 
   // Tom specific state
@@ -100,7 +101,7 @@ export default function WasmTest() {
     punch: 0.4,
     decay: 0.4,
     pitchDrop: 0.3,
-    volume: 0.8,
+    volume: 0.6,
   });
 
   // Keyboard mapping state
@@ -224,15 +225,19 @@ export default function WasmTest() {
 
       // Create kick drum instance
       kickDrumRef.current = new WasmKickDrum(44100);
+      kickDrumRef.current.set_volume(kickConfig.volume);
 
       // Create hi-hat instance
       hihatRef.current = WasmHiHat.new_with_preset(44100, "closed_default");
+      hihatRef.current.set_volume(hihatConfig.volume);
 
       // Create snare instance
       snareRef.current = new WasmSnareDrum(44100);
+      snareRef.current.set_volume(snareConfig.volume);
 
       // Create tom instance
       tomRef.current = new WasmTomDrum(44100);
+      tomRef.current.set_volume(tomConfig.volume);
 
       // Initialize Web Audio API
       audioContextRef.current = new AudioContext();
@@ -626,6 +631,8 @@ export default function WasmTest() {
   ) {
     if (!kickDrumRef.current) return;
 
+    console.log(`[DEBUG] handleKickConfigChange called: param=${param}, value=${value}`);
+
     // Update local state
     setKickConfig((prev) => ({ ...prev, [param]: value }));
 
@@ -650,7 +657,23 @@ export default function WasmTest() {
         kickDrumRef.current.set_pitch_drop(value);
         break;
       case "volume":
-        kickDrumRef.current.set_volume(value);
+        console.log(`[DEBUG] Setting kick volume to ${value}`);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(0, value);
+          // Update stage's internal kick drum volume (used by sequencer)
+          stageRef.current.set_kick_config(
+            kickConfig.frequency,
+            kickConfig.punch,
+            kickConfig.sub,
+            kickConfig.click,
+            kickConfig.decay,
+            kickConfig.pitchDrop,
+            value
+          );
+        }
+        if (kickDrumRef.current) {
+          kickDrumRef.current.set_volume(value);
+        }
         break;
     }
   }
@@ -695,7 +718,7 @@ export default function WasmTest() {
           click: 0.5,
           decay: 0.4,
           pitchDrop: 0.8,
-          volume: 0.8,
+          volume: 0.6,
         });
         break;
       default: // default
@@ -706,7 +729,7 @@ export default function WasmTest() {
           click: 0.3,
           decay: 0.8,
           pitchDrop: 0.6,
-          volume: 0.8,
+          volume: 0.6,
         });
     }
   }
@@ -812,7 +835,7 @@ export default function WasmTest() {
           brightness: 0.6,
           decayTime: 0.1,
           attackTime: 0.001,
-          volume: 0.8,
+          volume: 0.6,
           isOpen: false,
         });
         break;
@@ -845,7 +868,7 @@ export default function WasmTest() {
           brightness: 1.0,
           decayTime: 1.2,
           attackTime: 0.001,
-          volume: 0.8,
+          volume: 0.6,
           isOpen: true,
         });
         break;
@@ -878,7 +901,7 @@ export default function WasmTest() {
           brightness: 0.6,
           decayTime: 0.1,
           attackTime: 0.001,
-          volume: 0.8,
+          volume: 0.6,
           isOpen: false,
         });
     }
@@ -889,6 +912,8 @@ export default function WasmTest() {
     value: number | boolean
   ) {
     if (!hihatRef.current) return;
+
+    console.log(`[DEBUG] handleHihatConfigChange called: param=${param}, value=${value}`);
 
     // Update local state
     setHihatConfig((prev) => ({ ...prev, [param]: value }));
@@ -911,7 +936,23 @@ export default function WasmTest() {
         hihatRef.current.set_attack(value as number);
         break;
       case "volume":
-        hihatRef.current.set_volume(value as number);
+        console.log(`[DEBUG] Setting hihat volume to ${value}`);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(2, value as number);
+          // Update stage's internal hihat drum volume (used by sequencer)
+          stageRef.current.set_hihat_config(
+            hihatConfig.baseFrequency,
+            hihatConfig.resonance,
+            hihatConfig.brightness,
+            hihatConfig.decayTime,
+            hihatConfig.attackTime,
+            value as number,
+            hihatConfig.isOpen
+          );
+        }
+        if (hihatRef.current) {
+          hihatRef.current.set_volume(value as number);
+        }
         break;
       case "isOpen":
         hihatRef.current.set_open(value as boolean);
@@ -1021,6 +1062,8 @@ export default function WasmTest() {
   ) {
     if (!snareRef.current) return;
 
+    console.log(`[DEBUG] handleSnareConfigChange called: param=${param}, value=${value}`);
+
     // Update local state
     setSnareConfig((prev) => ({ ...prev, [param]: value }));
 
@@ -1045,7 +1088,23 @@ export default function WasmTest() {
         snareRef.current.set_pitch_drop(value);
         break;
       case "volume":
-        snareRef.current.set_volume(value);
+        console.log(`[DEBUG] Setting snare volume to ${value}`);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(1, value);
+          // Update stage's internal snare drum volume (used by sequencer)
+          stageRef.current.set_snare_config(
+            snareConfig.frequency,
+            snareConfig.tonal,
+            snareConfig.noise,
+            snareConfig.crack,
+            snareConfig.decay,
+            snareConfig.pitchDrop,
+            value
+          );
+        }
+        if (snareRef.current) {
+          snareRef.current.set_volume(value);
+        }
         break;
     }
   }
@@ -1090,7 +1149,7 @@ export default function WasmTest() {
           crack: 0.8,
           decay: 0.08,
           pitchDrop: 0.5,
-          volume: 0.8,
+          volume: 0.6,
         });
         break;
       case "fat":
@@ -1112,7 +1171,7 @@ export default function WasmTest() {
           crack: 0.5,
           decay: 0.15,
           pitchDrop: 0.3,
-          volume: 0.8,
+          volume: 0.6,
         });
     }
   }
@@ -1204,6 +1263,8 @@ export default function WasmTest() {
   function handleTomConfigChange(param: keyof typeof tomConfig, value: number) {
     if (!tomRef.current) return;
 
+    console.log(`[DEBUG] handleTomConfigChange called: param=${param}, value=${value}`);
+
     // Update local state
     setTomConfig((prev) => ({ ...prev, [param]: value }));
 
@@ -1225,7 +1286,22 @@ export default function WasmTest() {
         tomRef.current.set_pitch_drop(value);
         break;
       case "volume":
-        tomRef.current.set_volume(value);
+        console.log(`[DEBUG] Setting tom volume to ${value}`);
+        if (stageRef.current) {
+          stageRef.current.set_instrument_volume(3, value);
+          // Update stage's internal tom drum volume (used by sequencer)
+          stageRef.current.set_tom_config(
+            tomConfig.frequency,
+            tomConfig.tonal,
+            tomConfig.punch,
+            tomConfig.decay,
+            tomConfig.pitchDrop,
+            value
+          );
+        }
+        if (tomRef.current) {
+          tomRef.current.set_volume(value);
+        }
         break;
     }
   }
@@ -1257,7 +1333,7 @@ export default function WasmTest() {
           punch: 0.4,
           decay: 0.4,
           pitchDrop: 0.3,
-          volume: 0.8,
+          volume: 0.6,
         });
         break;
       case "low_tom":
@@ -1287,7 +1363,7 @@ export default function WasmTest() {
           punch: 0.4,
           decay: 0.4,
           pitchDrop: 0.3,
-          volume: 0.8,
+          volume: 0.6,
         });
     }
   }
@@ -2683,6 +2759,19 @@ export default function WasmTest() {
 
           {/* Sequencer */}
           <Sequencer stage={stageRef.current} isPlaying={isPlaying} />
+
+          {/* Mixer */}
+          <Mixer
+            kickVolume={kickConfig.volume}
+            snareVolume={snareConfig.volume}
+            hihatVolume={hihatConfig.volume}
+            tomVolume={tomConfig.volume}
+            onKickVolumeChange={(volume) => handleKickConfigChange('volume', volume)}
+            onSnareVolumeChange={(volume) => handleSnareConfigChange('volume', volume)}
+            onHihatVolumeChange={(volume) => handleHihatConfigChange('volume', volume)}
+            onTomVolumeChange={(volume) => handleTomConfigChange('volume', volume)}
+            isLoaded={isLoaded}
+          />
 
           {/* Spectrogram Display */}
           <div>
