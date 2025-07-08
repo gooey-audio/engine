@@ -239,6 +239,8 @@ impl Stage {
         self.trigger_current_step(0.001);
         // Initialize with proper timing - use a small offset to ensure proper initialization
         self.sequencer.play_at_time(0.001);
+        // Advance to next step since we just triggered the current one
+        self.sequencer.advance_step();
     }
     
     /// Start the sequencer with a specific time
@@ -247,6 +249,8 @@ impl Stage {
         self.trigger_current_step(time);
         // Now start the sequencer timing
         self.sequencer.play_at_time(time);
+        // Advance to next step since we just triggered the current one
+        self.sequencer.advance_step();
     }
 
     /// Trigger instruments based on the current step pattern
