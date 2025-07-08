@@ -281,7 +281,17 @@ pub mod web {
         // Drum configuration setters
         #[wasm_bindgen]
         pub fn set_kick_config(&mut self, frequency: f32, punch: f32, sub: f32, click: f32, decay: f32, pitch_drop: f32, volume: f32) {
-            let config = KickConfig::new(frequency, punch, sub, click, decay, pitch_drop, volume);
+            let config = KickConfig::new(
+                frequency, punch, sub, click, decay, pitch_drop, volume,
+                36.0,   // base_note
+                0.5,    // pitch_env_amount
+                10.0,   // attack_ms
+                0.5,    // noise_freq_scale
+                0.5,    // noise_env_depth
+                20.0,   // overdrive
+                false,  // phase_reset
+                50.0    // filter_sweep_amt
+            );
             self.stage.set_kick_config(config);
         }
         

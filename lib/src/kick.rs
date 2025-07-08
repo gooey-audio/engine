@@ -315,7 +315,7 @@ impl KickDrum {
         self.click_oscillator.frequency_hz = (self.base_frequency * 40.0) + (pitch_offset * 0.3);
 
         // Get envelope values for different components
-        let amp_env = self.sub_oscillator.envelope.get_amplitude(current_time);
+        let _amp_env = self.sub_oscillator.envelope.get_amplitude(current_time);
         let noise_env = self.noise_envelope.get_amplitude(current_time);
         let click_env = self.click_envelope.get_amplitude(current_time);
 
