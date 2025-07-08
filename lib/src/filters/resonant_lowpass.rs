@@ -36,7 +36,7 @@ impl ResonantLowpassFilter {
         let a2 = 1.0 - alpha;
         
         // Normalize coefficients
-        let norm_b0 = b0 / a0;
+        let _norm_b0 = b0 / a0;
         let _norm_b1 = b1 / a0;
         let _norm_b2 = b2 / a0;
         let _norm_a1 = a1 / a0;
