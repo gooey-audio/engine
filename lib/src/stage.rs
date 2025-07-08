@@ -235,13 +235,41 @@ impl Stage {
 
     /// Start the sequencer
     pub fn sequencer_play(&mut self) {
+        // Immediately trigger the current step to avoid delay
+        self.trigger_current_step(0.001);
         // Initialize with proper timing - use a small offset to ensure proper initialization
         self.sequencer.play_at_time(0.001);
     }
     
     /// Start the sequencer with a specific time
     pub fn sequencer_play_at_time(&mut self, time: f32) {
+        // Immediately trigger the current step to avoid delay
+        self.trigger_current_step(time);
+        // Now start the sequencer timing
         self.sequencer.play_at_time(time);
+    }
+
+    /// Trigger instruments based on the current step pattern
+    fn trigger_current_step(&mut self, time: f32) {
+        let current_step = self.sequencer.current_step;
+        
+        // Trigger drum instruments based on patterns
+        // Pattern 0: Kick
+        if self.sequencer.patterns[0][current_step] {
+            self.kick.trigger(time);
+        }
+        // Pattern 1: Snare
+        if self.sequencer.patterns[1][current_step] {
+            self.snare.trigger(time);
+        }
+        // Pattern 2: Hi-hat
+        if self.sequencer.patterns[2][current_step] {
+            self.hihat.trigger(time);
+        }
+        // Pattern 3: Tom
+        if self.sequencer.patterns[3][current_step] {
+            self.tom.trigger(time);
+        }
     }
 
     /// Stop the sequencer
