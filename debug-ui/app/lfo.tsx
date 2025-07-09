@@ -39,10 +39,13 @@ export default function Lfo({
   ];
 
   const handleReset = () => {
-    onEnabledChange(false);
-    onDepthChange(0.5);
-    onWaveformChange(0);
-    onRateChange(2);
+    // Batch all state updates to prevent multiple synchronous WASM calls
+    React.startTransition(() => {
+      onEnabledChange(false);
+      onDepthChange(0.5);
+      onWaveformChange(0);
+      onRateChange(2);
+    });
   };
 
   if (!isLoaded) {

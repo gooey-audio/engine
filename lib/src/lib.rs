@@ -387,7 +387,13 @@ pub mod web {
         
         #[wasm_bindgen]
         pub fn set_lfo1_depth(&mut self, depth: f32) {
-            self.stage.set_lfo1_depth(depth);
+            // Clamp depth to valid range [0.0, 1.0] and handle NaN/infinity
+            let safe_depth = if depth.is_finite() {
+                depth.max(0.0).min(1.0)
+            } else {
+                0.0 // Fallback for NaN or infinity
+            };
+            self.stage.set_lfo1_depth(safe_depth);
         }
         
         #[wasm_bindgen]

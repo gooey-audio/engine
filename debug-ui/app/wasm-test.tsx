@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import init, {
   WasmStage,
   WasmKickDrum,
@@ -1382,39 +1382,74 @@ export default function WasmTest() {
     stageRef.current.set_saturation(value);
   }
 
-  // LFO control functions
-  function handleLfoEnabledChange(enabled: boolean) {
+  // LFO control functions with error handling
+  const handleLfoEnabledChange = useCallback((enabled: boolean) => {
     if (!stageRef.current) return;
     
-    setLfoEnabled(enabled);
-    stageRef.current.set_lfo1_enabled(enabled);
-    
-    // Reset LFO phase when enabling
-    if (enabled) {
-      stageRef.current.reset_lfo1();
+    try {
+      setLfoEnabled(enabled);
+      stageRef.current.set_lfo1_enabled(enabled);
+      
+      // Reset LFO phase when enabling
+      if (enabled) {
+        stageRef.current.reset_lfo1();
+      }
+    } catch (error) {
+      console.error('LFO enabled change failed:', error);
+      // Revert state on error
+      setLfoEnabled(!enabled);
     }
-  }
+  }, []);
 
-  function handleLfoDepthChange(depth: number) {
+  // Debounced depth change to prevent excessive WASM calls
+  const depthChangeTimeoutRef = useRef<NodeJS.Timeout>();
+  const handleLfoDepthChange = useCallback((depth: number) => {
     if (!stageRef.current) return;
     
+    // Validate input
+    if (depth < 0 || depth > 1 || isNaN(depth)) return;
+    
+    // Update React state immediately for responsive UI
     setLfoDepth(depth);
-    stageRef.current.set_lfo1_depth(depth);
-  }
+    
+    // Debounce WASM calls to prevent flooding
+    clearTimeout(depthChangeTimeoutRef.current);
+    depthChangeTimeoutRef.current = setTimeout(() => {
+      try {
+        if (stageRef.current) {
+          stageRef.current.set_lfo1_depth(depth);
+        }
+      } catch (error) {
+        console.error('LFO depth change failed:', error);
+      }
+    }, 16); // ~60fps max rate
+  }, []);
 
-  function handleLfoWaveformChange(waveform: number) {
+  const handleLfoWaveformChange = useCallback((waveform: number) => {
     if (!stageRef.current) return;
     
-    setLfoWaveform(waveform);
-    stageRef.current.set_lfo1_waveform(waveform);
-  }
+    try {
+      setLfoWaveform(waveform);
+      stageRef.current.set_lfo1_waveform(waveform);
+    } catch (error) {
+      console.error('LFO waveform change failed:', error);
+      // Revert state on error
+      setLfoWaveform(waveform === 0 ? 1 : 0);
+    }
+  }, []);
 
-  function handleLfoRateChange(rate: number) {
+  const handleLfoRateChange = useCallback((rate: number) => {
     if (!stageRef.current) return;
     
-    setLfoRate(rate);
-    stageRef.current.set_lfo1_rate(rate);
-  }
+    try {
+      setLfoRate(rate);
+      stageRef.current.set_lfo1_rate(rate);
+    } catch (error) {
+      console.error('LFO rate change failed:', error);
+      // Revert state on error
+      setLfoRate(rate === 0 ? 2 : 0);
+    }
+  }, []);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">

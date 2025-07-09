@@ -76,14 +76,24 @@ impl Lfo {
         };
         
         if bpm != self.last_bpm || rate_changed {
+            // Clamp BPM to reasonable range to prevent division by zero and extreme values
+            let safe_bpm = bpm.max(1.0).min(1000.0);
+            
             // Calculate step interval (16th notes)
-            let step_interval = 60.0 / (bpm * 4.0);
+            let step_interval = 60.0 / (safe_bpm * 4.0);
             
             // Calculate LFO frequency based on rate
             let rate_multiplier = self.config.rate.get_multiplier();
-            let lfo_period = step_interval * rate_multiplier;
+            let lfo_period = (step_interval * rate_multiplier).max(0.001); // Minimum 1ms period
             
-            self.frequency_hz = 1.0 / lfo_period;
+            // Cap frequency to reasonable range (0.01 Hz to 100 Hz) and check for valid values
+            let new_frequency = 1.0 / lfo_period;
+            self.frequency_hz = if new_frequency.is_finite() {
+                new_frequency.max(0.01).min(100.0)
+            } else {
+                2.0 // Fallback to 2 Hz default
+            };
+            
             self.last_bpm = bpm;
             self.last_rate = self.config.rate;
         }
@@ -95,8 +105,12 @@ impl Lfo {
             return 0.0;
         }
 
-        // Calculate phase increment
-        let phase_increment = 2.0 * PI * self.frequency_hz / self.sample_rate;
+        // Calculate phase increment with bounds checking
+        let phase_increment = if self.sample_rate > 0.0 {
+            (2.0 * PI * self.frequency_hz / self.sample_rate).min(PI) // Cap at π to prevent excessive increment
+        } else {
+            0.0 // Fallback for invalid sample rate
+        };
         
         // Generate waveform based on current phase
         let raw_value = match self.config.waveform {
@@ -127,10 +141,8 @@ impl Lfo {
         // Update phase
         self.phase += phase_increment;
         
-        // Keep phase in reasonable range to avoid precision issues
-        if self.phase > 2.0 * PI * 1000.0 {
-            self.phase -= 2.0 * PI * 1000.0;
-        }
+        // Keep phase in reasonable range using proper modulo arithmetic
+        self.phase = self.phase % (2.0 * PI);
 
         // Apply depth and return
         raw_value * self.config.depth
