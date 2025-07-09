@@ -38,9 +38,9 @@ impl ResonantHighpassFilter {
         // Normalize coefficients
         let norm_b0 = b0 / a0;
         let norm_b1 = b1 / a0;
-        let norm_b2 = b2 / a0;
-        let norm_a1 = a1 / a0;
-        let norm_a2 = a2 / a0;
+        let _norm_b2 = b2 / a0;
+        let _norm_a1 = a1 / a0;
+        let _norm_a2 = a2 / a0;
         
         // Apply filter (simple one-pole approximation for efficiency)
         let alpha_simple = 1.0 - (-2.0 * std::f32::consts::PI * self.cutoff_freq / self.sample_rate).exp();

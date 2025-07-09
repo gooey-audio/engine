@@ -476,6 +476,14 @@ pub mod web {
                 decay_time,
                 pitch_drop,
                 volume,
+                36.0,    // base_note: MIDI note C2
+                0.5,     // pitch_env_amount: moderate pitch envelope
+                10.0,    // attack_ms: 10ms attack
+                0.5,     // noise_freq_scale: moderate noise frequency scaling
+                0.5,     // noise_env_depth: moderate noise envelope depth
+                20.0,    // overdrive: moderate overdrive
+                false,   // phase_reset: no phase reset by default
+                50.0,    // filter_sweep_amt: moderate filter sweep
             );
             self.kick_drum.set_config(config);
         }
