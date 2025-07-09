@@ -1,5 +1,5 @@
 use crate::envelope::{ADSRConfig, Envelope};
-use crate::waveform::Waveform;
+use crate::gen::waveform::Waveform;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 

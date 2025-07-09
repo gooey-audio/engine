@@ -1,8 +1,9 @@
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::filters::{ResonantHighpassFilter, ResonantLowpassFilter};
-use crate::fm_snap::FMSnapSynthesizer;
-use crate::oscillator::Oscillator;
-use crate::waveform::Waveform;
+use crate::gen::oscillator::Oscillator;
+use crate::gen::waveform::Waveform;
+use crate::instruments::fm_snap::FMSnapSynthesizer;
+
 
 // Utility function to convert MIDI note to frequency
 fn midi_to_hz(midi_note: f32) -> f32 {
@@ -25,14 +26,14 @@ pub struct KickConfig {
     pub pitch_drop: f32,     // Frequency sweep amount (0.0-1.0)
     pub volume: f32,         // Overall volume (0.0-1.0)
     // Max MSP inspired enhancements
-    pub base_note: f32,              // MIDI note (0-127)
-    pub pitch_env_amount: f32,       // Pitch envelope amount (0.0-1.0) -> +30 to +200 Hz
-    pub attack_ms: f32,              // Attack time in ms (1-100) -> 0.5 to 400 ms
-    pub noise_freq_scale: f32,       // Noise LP cutoff (0.0-1.0) -> 10 to 2400 Hz
-    pub noise_env_depth: f32,        // Noise envelope depth (0.0-1.0) -> 40 to 90 scale
-    pub overdrive: f32,              // Overdrive gain (1-100) -> 1 to 10 gain
-    pub phase_reset: bool,           // Phase reset on trigger
-    pub filter_sweep_amt: f32,       // Filter sweep amount (1-100) -> 4 to 700 units
+    pub base_note: f32,        // MIDI note (0-127)
+    pub pitch_env_amount: f32, // Pitch envelope amount (0.0-1.0) -> +30 to +200 Hz
+    pub attack_ms: f32,        // Attack time in ms (1-100) -> 0.5 to 400 ms
+    pub noise_freq_scale: f32, // Noise LP cutoff (0.0-1.0) -> 10 to 2400 Hz
+    pub noise_env_depth: f32,  // Noise envelope depth (0.0-1.0) -> 40 to 90 scale
+    pub overdrive: f32,        // Overdrive gain (1-100) -> 1 to 10 gain
+    pub phase_reset: bool,     // Phase reset on trigger
+    pub filter_sweep_amt: f32, // Filter sweep amount (1-100) -> 4 to 700 units
 }
 
 impl KickConfig {
@@ -74,29 +75,25 @@ impl KickConfig {
 
     pub fn default() -> Self {
         Self::new(
-            30.0, 0.80, 0.80, 0.20, 0.28, 0.20, 0.80,
-            36.0, 0.5, 10.0, 0.5, 0.5, 20.0, false, 50.0
+            30.0, 0.80, 0.80, 0.20, 0.28, 0.20, 0.80, 36.0, 0.5, 10.0, 0.5, 0.5, 20.0, false, 50.0,
         )
     }
 
     pub fn punchy() -> Self {
         Self::new(
-            60.0, 0.9, 0.6, 0.4, 0.6, 0.7, 0.85,
-            40.0, 0.8, 5.0, 0.6, 0.7, 40.0, true, 70.0
+            60.0, 0.9, 0.6, 0.4, 0.6, 0.7, 0.85, 40.0, 0.8, 5.0, 0.6, 0.7, 40.0, true, 70.0,
         )
     }
 
     pub fn deep() -> Self {
         Self::new(
-            45.0, 0.5, 1.0, 0.2, 1.2, 0.5, 0.9,
-            32.0, 0.3, 20.0, 0.8, 0.8, 10.0, false, 30.0
+            45.0, 0.5, 1.0, 0.2, 1.2, 0.5, 0.9, 32.0, 0.3, 20.0, 0.8, 0.8, 10.0, false, 30.0,
         )
     }
 
     pub fn tight() -> Self {
         Self::new(
-            70.0, 0.8, 0.7, 0.5, 0.4, 0.8, 0.8,
-            44.0, 0.9, 3.0, 0.3, 0.4, 50.0, true, 80.0
+            70.0, 0.8, 0.7, 0.5, 0.4, 0.8, 0.8, 44.0, 0.9, 3.0, 0.3, 0.4, 50.0, true, 80.0,
         )
     }
 }
@@ -122,11 +119,11 @@ pub struct KickDrum {
     pub fm_snap: FMSnapSynthesizer,
 
     // Max MSP inspired enhancements
-    pub noise_lp_filter: ResonantLowpassFilter,  // Low-pass filter for noise
+    pub noise_lp_filter: ResonantLowpassFilter, // Low-pass filter for noise
     pub output_lp_filter: ResonantLowpassFilter, // Output low-pass filter with sweep
-    pub noise_envelope: Envelope,                // Separate envelope for noise
-    pub click_envelope: Envelope,                // Separate envelope for click
-    
+    pub noise_envelope: Envelope,               // Separate envelope for noise
+    pub click_envelope: Envelope,               // Separate envelope for click
+
     pub is_active: bool,
 }
 
@@ -162,17 +159,17 @@ impl KickDrum {
 
     fn configure_oscillators(&mut self) {
         let config = self.config;
-        
+
         // Convert MIDI note to base frequency if base_note is set
         let base_freq = if config.base_note > 0.0 {
             midi_to_hz(config.base_note)
         } else {
             config.kick_frequency
         };
-        
+
         // Map attack time from UI range to DSP range (1-100 -> 0.5-400ms)
         let attack_time_sec = zmap(config.attack_ms, 1.0, 100.0, 0.0005, 0.4);
-        
+
         // Map decay time from UI range to DSP range (1-100 -> 0.5-4000ms)
         let decay_time_sec = zmap(config.decay_time, 1.0, 100.0, 0.0005, 4.0);
 
@@ -182,10 +179,10 @@ impl KickDrum {
         self.sub_oscillator
             .set_volume(config.sub_amount * config.volume);
         self.sub_oscillator.set_adsr(ADSRConfig::new(
-            attack_time_sec,         // Max MSP inspired attack time
-            decay_time_sec,          // Max MSP inspired decay time
-            0.0,                     // No sustain
-            decay_time_sec * 0.2,    // Synchronized release
+            attack_time_sec,      // Max MSP inspired attack time
+            decay_time_sec,       // Max MSP inspired decay time
+            0.0,                  // No sustain
+            decay_time_sec * 0.2, // Synchronized release
         ));
 
         // Punch oscillator: Sine or triangle for mid-range impact
@@ -194,10 +191,10 @@ impl KickDrum {
         self.punch_oscillator
             .set_volume(config.punch_amount * config.volume * 0.7);
         self.punch_oscillator.set_adsr(ADSRConfig::new(
-            attack_time_sec,         // Max MSP inspired attack time
-            decay_time_sec,          // Max MSP inspired decay time
-            0.0,                     // No sustain
-            decay_time_sec * 0.2,    // Synchronized release
+            attack_time_sec,      // Max MSP inspired attack time
+            decay_time_sec,       // Max MSP inspired decay time
+            0.0,                  // No sustain
+            decay_time_sec * 0.2, // Synchronized release
         ));
 
         // Click oscillator: High-frequency filtered noise transient
@@ -206,44 +203,44 @@ impl KickDrum {
         self.click_oscillator
             .set_volume(config.click_amount * config.volume * 0.3);
         self.click_oscillator.set_adsr(ADSRConfig::new(
-            attack_time_sec,          // Max MSP inspired attack time
-            decay_time_sec * 0.2,     // Much shorter decay time for click
-            0.0,                      // No sustain
-            decay_time_sec * 0.02,    // Extremely short release for click
+            attack_time_sec,       // Max MSP inspired attack time
+            decay_time_sec * 0.2,  // Much shorter decay time for click
+            0.0,                   // No sustain
+            decay_time_sec * 0.02, // Extremely short release for click
         ));
 
         // Pitch envelope: Fast attack, synchronized decay for frequency sweeping
         self.pitch_envelope.set_config(ADSRConfig::new(
-            0.001,                   // Instant attack
-            decay_time_sec,          // Max MSP inspired decay time
-            0.0,                     // Drop to base frequency
-            decay_time_sec * 0.2,    // Synchronized release
+            0.001,                // Instant attack
+            decay_time_sec,       // Max MSP inspired decay time
+            0.0,                  // Drop to base frequency
+            decay_time_sec * 0.2, // Synchronized release
         ));
-        
+
         // Max MSP inspired noise envelope
         self.noise_envelope.set_config(ADSRConfig::new(
-            attack_time_sec,         // Max MSP inspired attack time
-            decay_time_sec * 0.5,    // Shorter decay for noise
-            0.0,                     // No sustain
-            decay_time_sec * 0.1,    // Short release for noise
+            attack_time_sec,      // Max MSP inspired attack time
+            decay_time_sec * 0.5, // Shorter decay for noise
+            0.0,                  // No sustain
+            decay_time_sec * 0.1, // Short release for noise
         ));
-        
+
         // Max MSP inspired click envelope
         self.click_envelope.set_config(ADSRConfig::new(
-            0.001,                   // Very fast attack for click
-            decay_time_sec * 0.1,    // Very short decay for click
-            0.0,                     // No sustain
-            decay_time_sec * 0.02,   // Extremely short release for click
+            0.001,                 // Very fast attack for click
+            decay_time_sec * 0.1,  // Very short decay for click
+            0.0,                   // No sustain
+            decay_time_sec * 0.02, // Extremely short release for click
         ));
-        
+
         // Configure noise low-pass filter (10-2400 Hz)
         let noise_lp_freq = zmap(config.noise_freq_scale, 0.0, 1.0, 10.0, 2400.0);
         self.noise_lp_filter.set_cutoff_freq(noise_lp_freq);
-        
+
         // Configure output low-pass filter with sweep (4-700 units)
         let output_lp_freq = zmap(config.filter_sweep_amt, 1.0, 100.0, 4.0, 700.0);
         self.output_lp_filter.set_cutoff_freq(output_lp_freq);
-        
+
         // Update base frequency
         self.base_frequency = base_freq;
     }
@@ -329,7 +326,10 @@ impl KickDrum {
 
         // Max MSP inspired noise component with low-pass filtering
         let noise_scale = zmap(self.config.noise_env_depth, 0.0, 1.0, 40.0, 90.0);
-        let noise_component = self.noise_lp_filter.process(raw_click_output) * noise_env * (noise_scale / 100.0) * 0.3;
+        let noise_component = self.noise_lp_filter.process(raw_click_output)
+            * noise_env
+            * (noise_scale / 100.0)
+            * 0.3;
 
         // Add FM snap for beater sound
         let fm_snap_output = self.fm_snap.tick(current_time);
@@ -337,7 +337,8 @@ impl KickDrum {
         // Mix all components
         let body_mix = sub_output + punch_output;
         let click_mix = filtered_click_output * click_env * 0.2;
-        let mut total_mix = body_mix + click_mix + noise_component + (fm_snap_output * self.config.volume);
+        let mut total_mix =
+            body_mix + click_mix + noise_component + (fm_snap_output * self.config.volume);
 
         // Max MSP inspired overdrive/saturation
         let overdrive_gain = zmap(self.config.overdrive, 1.0, 100.0, 1.0, 10.0);

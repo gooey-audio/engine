@@ -3,25 +3,20 @@
 pub mod audio_state;
 pub mod envelope;
 pub mod filters;
-pub mod fm_snap;
-pub mod hihat;
-pub mod kick;
-pub mod oscillator;
-pub mod snare;
 pub mod stage;
-pub mod tom;
-pub mod waveform;
+
+// New organized modules
+pub mod instruments;
+pub mod effects;
+pub mod gen;
 
 // WASM bindings (web)
 #[cfg(feature = "web")]
 pub mod web {
     use super::envelope::ADSRConfig;
-    use super::hihat::{HiHat, HiHatConfig};
-    use super::kick::{KickConfig, KickDrum};
-    use super::oscillator::Oscillator;
-    use super::snare::{SnareConfig, SnareDrum};
+    use super::instruments::{HiHat, HiHatConfig, KickConfig, KickDrum, SnareConfig, SnareDrum, TomConfig, TomDrum};
+    use super::gen::oscillator::Oscillator;
     use super::stage::Stage;
-    use super::tom::{TomConfig, TomDrum};
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -151,13 +146,13 @@ pub mod web {
         #[wasm_bindgen]
         pub fn set_instrument_waveform(&mut self, index: usize, waveform_type: u32) {
             let waveform = match waveform_type {
-                0 => crate::waveform::Waveform::Sine,
-                1 => crate::waveform::Waveform::Square,
-                2 => crate::waveform::Waveform::Saw,
-                3 => crate::waveform::Waveform::Triangle,
-                4 => crate::waveform::Waveform::RingMod,
-                5 => crate::waveform::Waveform::Noise,
-                _ => crate::waveform::Waveform::Sine, // Default to sine for invalid values
+                0 => crate::gen::waveform::Waveform::Sine,
+                1 => crate::gen::waveform::Waveform::Square,
+                2 => crate::gen::waveform::Waveform::Saw,
+                3 => crate::gen::waveform::Waveform::Triangle,
+                4 => crate::gen::waveform::Waveform::RingMod,
+                5 => crate::gen::waveform::Waveform::Noise,
+                _ => crate::gen::waveform::Waveform::Sine, // Default to sine for invalid values
             };
             self.stage.set_instrument_waveform(index, waveform);
         }
@@ -166,12 +161,12 @@ pub mod web {
         pub fn get_instrument_waveform(&self, index: usize) -> u32 {
             let waveform = self.stage.get_instrument_waveform(index);
             match waveform {
-                crate::waveform::Waveform::Sine => 0,
-                crate::waveform::Waveform::Square => 1,
-                crate::waveform::Waveform::Saw => 2,
-                crate::waveform::Waveform::Triangle => 3,
-                crate::waveform::Waveform::RingMod => 4,
-                crate::waveform::Waveform::Noise => 5,
+                crate::gen::waveform::Waveform::Sine => 0,
+                crate::gen::waveform::Waveform::Square => 1,
+                crate::gen::waveform::Waveform::Saw => 2,
+                crate::gen::waveform::Waveform::Triangle => 3,
+                crate::gen::waveform::Waveform::RingMod => 4,
+                crate::gen::waveform::Waveform::Noise => 5,
             }
         }
 
