@@ -2,6 +2,7 @@ use crate::envelope::ADSRConfig;
 use crate::gen::oscillator::Oscillator;
 use crate::instruments::{KickDrum, KickConfig, SnareDrum, SnareConfig, HiHat, HiHatConfig, TomDrum, TomConfig};
 use crate::effects::BrickWallLimiter;
+use crate::modulation::{Lfo, LfoConfig, LfoRate};
 
 pub struct Stage {
     pub sample_rate: f32,
@@ -14,6 +15,9 @@ pub struct Stage {
     pub snare: SnareDrum,
     pub hihat: HiHat,
     pub tom: TomDrum,
+    
+    // Modulation
+    pub lfo1: Lfo,
     
     // Harmonic distortion settings
     pub saturation: f32, // 0.0 to 1.0, where 0.0 is no distortion
@@ -50,6 +54,9 @@ impl Stage {
             hihat: HiHat::with_config(sample_rate, HiHatConfig::closed_default()),
             tom: TomDrum::with_config(sample_rate, TomConfig::default()),
             
+            // Initialize modulation
+            lfo1: Lfo::new(sample_rate),
+            
             // Initialize harmonic distortion
             saturation: 0.0, // No distortion by default
         }
@@ -62,6 +69,27 @@ impl Stage {
     }
 
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        // Update LFO frequency based on current BPM
+        self.lfo1.update_frequency(self.sequencer.bpm);
+        
+        // Get LFO modulation value
+        let lfo_value = self.lfo1.tick(current_time);
+        
+        // Apply LFO to hi-hat filter cutoff
+        if self.lfo1.is_enabled() {
+            let base_frequency = self.hihat.config.base_frequency;
+            let modulation_range = 4000.0; // +/- 4kHz modulation range
+            let modulated_frequency = base_frequency + (lfo_value * modulation_range);
+            
+            // Create a temporary config with the modulated frequency
+            let mut temp_config = self.hihat.config;
+            temp_config.base_frequency = modulated_frequency.max(1000.0).min(16000.0);
+            
+            // Apply the modulated frequency directly to the oscillators
+            self.hihat.noise_oscillator.frequency_hz = temp_config.base_frequency;
+            self.hihat.brightness_oscillator.frequency_hz = temp_config.base_frequency * 2.0;
+        }
+        
         // Update sequencer and trigger instruments if needed
         if self.sequencer.is_playing {
             self.sequencer.update(current_time);
@@ -370,6 +398,53 @@ impl Stage {
     /// Get the current saturation level
     pub fn get_saturation(&self) -> f32 {
         self.saturation
+    }
+    
+    // LFO control methods
+    
+    /// Set the LFO configuration
+    pub fn set_lfo1_config(&mut self, config: LfoConfig) {
+        self.lfo1.set_config(config);
+    }
+    
+    /// Get the LFO configuration
+    pub fn get_lfo1_config(&self) -> LfoConfig {
+        self.lfo1.get_config()
+    }
+    
+    /// Set the LFO waveform
+    pub fn set_lfo1_waveform(&mut self, waveform: crate::gen::waveform::Waveform) {
+        self.lfo1.set_waveform(waveform);
+    }
+    
+    /// Set the LFO rate
+    pub fn set_lfo1_rate(&mut self, rate: LfoRate) {
+        self.lfo1.set_rate(rate);
+    }
+    
+    /// Set the LFO depth
+    pub fn set_lfo1_depth(&mut self, depth: f32) {
+        self.lfo1.set_depth(depth);
+    }
+    
+    /// Set the LFO enabled state
+    pub fn set_lfo1_enabled(&mut self, enabled: bool) {
+        self.lfo1.set_enabled(enabled);
+    }
+    
+    /// Get the LFO enabled state
+    pub fn is_lfo1_enabled(&self) -> bool {
+        self.lfo1.is_enabled()
+    }
+    
+    /// Reset the LFO phase (useful for sync)
+    pub fn reset_lfo1(&mut self) {
+        self.lfo1.reset();
+    }
+    
+    /// Get the current LFO frequency
+    pub fn get_lfo1_frequency(&self) -> f32 {
+        self.lfo1.get_frequency()
     }
 }
 

@@ -9,6 +9,7 @@ pub mod stage;
 pub mod instruments;
 pub mod effects;
 pub mod gen;
+pub mod modulation;
 
 // WASM bindings (web)
 #[cfg(feature = "web")]
@@ -357,6 +358,56 @@ pub mod web {
         #[wasm_bindgen]
         pub fn get_saturation(&self) -> f32 {
             self.stage.get_saturation()
+        }
+        
+        // LFO control methods
+        
+        #[wasm_bindgen]
+        pub fn set_lfo1_waveform(&mut self, waveform_type: u32) {
+            let waveform = match waveform_type {
+                0 => crate::gen::waveform::Waveform::Sine,
+                1 => crate::gen::waveform::Waveform::Square,
+                2 => crate::gen::waveform::Waveform::Saw,
+                3 => crate::gen::waveform::Waveform::Triangle,
+                _ => crate::gen::waveform::Waveform::Sine, // Default to sine for invalid values
+            };
+            self.stage.set_lfo1_waveform(waveform);
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_lfo1_rate(&mut self, rate_type: u32) {
+            let rate = match rate_type {
+                0 => crate::modulation::LfoRate::Sixteenth,
+                1 => crate::modulation::LfoRate::Eighth,
+                2 => crate::modulation::LfoRate::Quarter,
+                _ => crate::modulation::LfoRate::Quarter, // Default to quarter for invalid values
+            };
+            self.stage.set_lfo1_rate(rate);
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_lfo1_depth(&mut self, depth: f32) {
+            self.stage.set_lfo1_depth(depth);
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_lfo1_enabled(&mut self, enabled: bool) {
+            self.stage.set_lfo1_enabled(enabled);
+        }
+        
+        #[wasm_bindgen]
+        pub fn is_lfo1_enabled(&self) -> bool {
+            self.stage.is_lfo1_enabled()
+        }
+        
+        #[wasm_bindgen]
+        pub fn reset_lfo1(&mut self) {
+            self.stage.reset_lfo1();
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_lfo1_frequency(&self) -> f32 {
+            self.stage.get_lfo1_frequency()
         }
     }
 

@@ -11,6 +11,7 @@ import init, {
 
 import Sequencer from "./sequencer";
 import Mixer from "./mixer";
+import Lfo from "./lfo";
 import { SpectrumAnalyzerWithRef } from "./spectrum-analyzer";
 import { SpectrogramDisplayWithRef } from "./spectrogram-display";
 
@@ -110,6 +111,12 @@ export default function WasmTest() {
   
   // Saturation control state
   const [saturation, setSaturation] = useState(0.0);
+  
+  // LFO control state
+  const [lfoEnabled, setLfoEnabled] = useState(false);
+  const [lfoDepth, setLfoDepth] = useState(0.5);
+  const [lfoWaveform, setLfoWaveform] = useState(0); // 0=Sine, 1=Square, 2=Saw, 3=Triangle
+  const [lfoRate, setLfoRate] = useState(2); // 0=1/16th, 1=1/8th, 2=1/4th
 
   // Keyboard mapping configuration
   const keyMappings = {
@@ -1373,6 +1380,40 @@ export default function WasmTest() {
     
     setSaturation(value);
     stageRef.current.set_saturation(value);
+  }
+
+  // LFO control functions
+  function handleLfoEnabledChange(enabled: boolean) {
+    if (!stageRef.current) return;
+    
+    setLfoEnabled(enabled);
+    stageRef.current.set_lfo1_enabled(enabled);
+    
+    // Reset LFO phase when enabling
+    if (enabled) {
+      stageRef.current.reset_lfo1();
+    }
+  }
+
+  function handleLfoDepthChange(depth: number) {
+    if (!stageRef.current) return;
+    
+    setLfoDepth(depth);
+    stageRef.current.set_lfo1_depth(depth);
+  }
+
+  function handleLfoWaveformChange(waveform: number) {
+    if (!stageRef.current) return;
+    
+    setLfoWaveform(waveform);
+    stageRef.current.set_lfo1_waveform(waveform);
+  }
+
+  function handleLfoRateChange(rate: number) {
+    if (!stageRef.current) return;
+    
+    setLfoRate(rate);
+    stageRef.current.set_lfo1_rate(rate);
   }
 
   return (
@@ -2770,6 +2811,19 @@ export default function WasmTest() {
             onSnareVolumeChange={(volume) => handleSnareConfigChange('volume', volume)}
             onHihatVolumeChange={(volume) => handleHihatConfigChange('volume', volume)}
             onTomVolumeChange={(volume) => handleTomConfigChange('volume', volume)}
+            isLoaded={isLoaded}
+          />
+
+          {/* LFO */}
+          <Lfo
+            enabled={lfoEnabled}
+            depth={lfoDepth}
+            waveform={lfoWaveform}
+            rate={lfoRate}
+            onEnabledChange={handleLfoEnabledChange}
+            onDepthChange={handleLfoDepthChange}
+            onWaveformChange={handleLfoWaveformChange}
+            onRateChange={handleLfoRateChange}
             isLoaded={isLoaded}
           />
 
