@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import init, {
   WasmStage,
   WasmKickDrum,
@@ -11,6 +11,7 @@ import init, {
 
 import Sequencer from "./sequencer";
 import Mixer from "./mixer";
+import Lfo from "./lfo";
 import { SpectrumAnalyzerWithRef } from "./spectrum-analyzer";
 import { SpectrogramDisplayWithRef } from "./spectrogram-display";
 
@@ -110,6 +111,12 @@ export default function WasmTest() {
   
   // Saturation control state
   const [saturation, setSaturation] = useState(0.0);
+  
+  // LFO control state
+  const [lfoEnabled, setLfoEnabled] = useState(false);
+  const [lfoDepth, setLfoDepth] = useState(0.5);
+  const [lfoWaveform, setLfoWaveform] = useState(0); // 0=Sine, 1=Square, 2=Saw, 3=Triangle
+  const [lfoRate, setLfoRate] = useState(2); // 0=1/16th, 1=1/8th, 2=1/4th
 
   // Keyboard mapping configuration
   const keyMappings = {
@@ -1374,6 +1381,75 @@ export default function WasmTest() {
     setSaturation(value);
     stageRef.current.set_saturation(value);
   }
+
+  // LFO control functions with error handling
+  const handleLfoEnabledChange = useCallback((enabled: boolean) => {
+    if (!stageRef.current) return;
+    
+    try {
+      setLfoEnabled(enabled);
+      stageRef.current.set_lfo1_enabled(enabled);
+      
+      // Reset LFO phase when enabling
+      if (enabled) {
+        stageRef.current.reset_lfo1();
+      }
+    } catch (error) {
+      console.error('LFO enabled change failed:', error);
+      // Revert state on error
+      setLfoEnabled(!enabled);
+    }
+  }, []);
+
+  // Debounced depth change to prevent excessive WASM calls
+  const depthChangeTimeoutRef = useRef<NodeJS.Timeout>();
+  const handleLfoDepthChange = useCallback((depth: number) => {
+    if (!stageRef.current) return;
+    
+    // Validate input
+    if (depth < 0 || depth > 1 || isNaN(depth)) return;
+    
+    // Update React state immediately for responsive UI
+    setLfoDepth(depth);
+    
+    // Debounce WASM calls to prevent flooding
+    clearTimeout(depthChangeTimeoutRef.current);
+    depthChangeTimeoutRef.current = setTimeout(() => {
+      try {
+        if (stageRef.current) {
+          stageRef.current.set_lfo1_depth(depth);
+        }
+      } catch (error) {
+        console.error('LFO depth change failed:', error);
+      }
+    }, 16); // ~60fps max rate
+  }, []);
+
+  const handleLfoWaveformChange = useCallback((waveform: number) => {
+    if (!stageRef.current) return;
+    
+    try {
+      setLfoWaveform(waveform);
+      stageRef.current.set_lfo1_waveform(waveform);
+    } catch (error) {
+      console.error('LFO waveform change failed:', error);
+      // Revert state on error
+      setLfoWaveform(waveform === 0 ? 1 : 0);
+    }
+  }, []);
+
+  const handleLfoRateChange = useCallback((rate: number) => {
+    if (!stageRef.current) return;
+    
+    try {
+      setLfoRate(rate);
+      stageRef.current.set_lfo1_rate(rate);
+    } catch (error) {
+      console.error('LFO rate change failed:', error);
+      // Revert state on error
+      setLfoRate(rate === 0 ? 2 : 0);
+    }
+  }, []);
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -2770,6 +2846,19 @@ export default function WasmTest() {
             onSnareVolumeChange={(volume) => handleSnareConfigChange('volume', volume)}
             onHihatVolumeChange={(volume) => handleHihatConfigChange('volume', volume)}
             onTomVolumeChange={(volume) => handleTomConfigChange('volume', volume)}
+            isLoaded={isLoaded}
+          />
+
+          {/* LFO */}
+          <Lfo
+            enabled={lfoEnabled}
+            depth={lfoDepth}
+            waveform={lfoWaveform}
+            rate={lfoRate}
+            onEnabledChange={handleLfoEnabledChange}
+            onDepthChange={handleLfoDepthChange}
+            onWaveformChange={handleLfoWaveformChange}
+            onRateChange={handleLfoRateChange}
             isLoaded={isLoaded}
           />
 
