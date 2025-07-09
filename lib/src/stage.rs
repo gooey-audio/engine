@@ -1,9 +1,7 @@
 use crate::envelope::ADSRConfig;
-use crate::oscillator::Oscillator;
-use crate::kick::{KickDrum, KickConfig};
-use crate::snare::{SnareDrum, SnareConfig};
-use crate::hihat::{HiHat, HiHatConfig};
-use crate::tom::{TomDrum, TomConfig};
+use crate::gen::oscillator::Oscillator;
+use crate::instruments::{KickDrum, KickConfig, SnareDrum, SnareConfig, HiHat, HiHatConfig, TomDrum, TomConfig};
+use crate::effects::BrickWallLimiter;
 
 pub struct Stage {
     pub sample_rate: f32,
@@ -179,17 +177,17 @@ impl Stage {
         }
     }
 
-    pub fn set_instrument_waveform(&mut self, index: usize, waveform: crate::waveform::Waveform) {
+    pub fn set_instrument_waveform(&mut self, index: usize, waveform: crate::gen::waveform::Waveform) {
         if let Some(instrument) = self.instruments.get_mut(index) {
             instrument.waveform = waveform;
         }
     }
 
-    pub fn get_instrument_waveform(&self, index: usize) -> crate::waveform::Waveform {
+    pub fn get_instrument_waveform(&self, index: usize) -> crate::gen::waveform::Waveform {
         if let Some(instrument) = self.instruments.get(index) {
             instrument.waveform
         } else {
-            crate::waveform::Waveform::Sine
+            crate::gen::waveform::Waveform::Sine
         }
     }
 
@@ -445,24 +443,3 @@ impl Sequencer {
     }
 }
 
-/// A brick wall limiter that prevents audio signals from exceeding a threshold
-pub struct BrickWallLimiter {
-    pub threshold: f32,
-}
-
-impl BrickWallLimiter {
-    pub fn new(threshold: f32) -> Self {
-        Self { threshold }
-    }
-
-    /// Apply brick wall limiting to the input signal
-    pub fn process(&self, input: f32) -> f32 {
-        if input > self.threshold {
-            self.threshold
-        } else if input < -self.threshold {
-            -self.threshold
-        } else {
-            input
-        }
-    }
-}

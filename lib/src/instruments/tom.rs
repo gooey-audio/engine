@@ -1,6 +1,6 @@
 use crate::envelope::{ADSRConfig, Envelope};
-use crate::oscillator::Oscillator;
-use crate::waveform::Waveform;
+use crate::gen::oscillator::Oscillator;
+use crate::gen::waveform::Waveform;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TomConfig {

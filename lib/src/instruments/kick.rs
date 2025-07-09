@@ -1,8 +1,8 @@
 use crate::envelope::{ADSRConfig, Envelope};
 use crate::filters::ResonantHighpassFilter;
-use crate::fm_snap::FMSnapSynthesizer;
-use crate::oscillator::Oscillator;
-use crate::waveform::Waveform;
+use crate::instruments::fm_snap::FMSnapSynthesizer;
+use crate::gen::oscillator::Oscillator;
+use crate::gen::waveform::Waveform;
 
 #[derive(Clone, Copy, Debug)]
 pub struct KickConfig {

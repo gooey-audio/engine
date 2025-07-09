@@ -6,4 +6,4 @@ pub enum Waveform {
     Triangle,
     RingMod,
     Noise,
-} 
+}
