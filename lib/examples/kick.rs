@@ -1,13 +1,11 @@
-/* This example expose parameter to pass generator of sample.
-Good starting point for integration of cpal into your application.
-*/
+// pub mod stage;
+//
 
+/// todo change project name from oscillator
 use oscillator::stage::Stage;
 use oscillator::playback::setup_audio_stream;
 use std::io::{self, Write};
 
-// Native binary entry point for the oscillator engine
-#[cfg(feature = "native")]
 fn main() -> anyhow::Result<()> {
     // Create a stage with default sample rate (will be updated by playback)
     let stage = Stage::new(44000.0);
@@ -43,9 +41,4 @@ fn main() -> anyhow::Result<()> {
     }
     
     Ok(())
-}
-
-#[cfg(not(feature = "native"))]
-fn main() {
-    println!("This binary is only available with the 'native' feature enabled.");
 }

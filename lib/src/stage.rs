@@ -125,6 +125,22 @@ impl Stage {
         }
     }
 
+    pub fn trigger_kick(&mut self, time: f32) {
+        self.kick.trigger(time);
+    }
+
+    pub fn trigger_snare(&mut self, time: f32) {
+        self.snare.trigger(time);
+    }
+
+    pub fn trigger_hihat(&mut self, time: f32) {
+        self.hihat.trigger(time);
+    }
+
+    pub fn trigger_tom(&mut self, time: f32) {
+        self.tom.trigger(time);
+    }
+
     pub fn trigger_instrument(&mut self, index: usize, time: f32) {
         if let Some(instrument) = self.instruments.get_mut(index) {
             instrument.trigger(time);

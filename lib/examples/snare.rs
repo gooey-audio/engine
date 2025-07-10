@@ -1,24 +1,19 @@
-/* This example expose parameter to pass generator of sample.
-Good starting point for integration of cpal into your application.
-*/
-
+/// Snare drum example
 use oscillator::stage::Stage;
 use oscillator::playback::setup_audio_stream;
 use std::io::{self, Write};
 
-// Native binary entry point for the oscillator engine
-#[cfg(feature = "native")]
 fn main() -> anyhow::Result<()> {
     // Create a stage with default sample rate (will be updated by playback)
     let stage = Stage::new(44000.0);
     
-    // Setup the audio stream with kick trigger callback
+    // Setup the audio stream with snare trigger callback
     let (_stream, audio_state) = setup_audio_stream(stage, |stage, time| {
-        stage.trigger_kick(time);
-        println!("Kick drum triggered at {:.2}s", time);
+        stage.trigger_snare(time);
+        println!("Snare drum triggered at {:.2}s", time);
     })?;
     
-    println!("Press '1' to trigger kick drum, 'q' to quit");
+    println!("Press '1' to trigger snare drum, 'q' to quit");
     
     // Main input loop
     loop {
@@ -28,7 +23,7 @@ fn main() -> anyhow::Result<()> {
         
         match input.trim() {
             "1" => {
-                println!("Triggering kick drum!");
+                println!("Triggering snare drum!");
                 let mut state = audio_state.lock().unwrap();
                 state.should_trigger = true;
             }
@@ -37,15 +32,10 @@ fn main() -> anyhow::Result<()> {
                 break;
             }
             _ => {
-                println!("Press '1' to trigger kick drum, 'q' to quit");
+                println!("Press '1' to trigger snare drum, 'q' to quit");
             }
         }
     }
     
     Ok(())
-}
-
-#[cfg(not(feature = "native"))]
-fn main() {
-    println!("This binary is only available with the 'native' feature enabled.");
-}
+} 
