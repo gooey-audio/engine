@@ -10,6 +10,10 @@ pub mod instruments;
 pub mod effects;
 pub mod gen;
 
+// CPAL playback module (native only)
+#[cfg(feature = "native")]
+pub mod playback;
+
 // WASM bindings (web)
 #[cfg(feature = "web")]
 pub mod web {
