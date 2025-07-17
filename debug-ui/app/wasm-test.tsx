@@ -319,40 +319,7 @@ export default function WasmTest() {
 
     try {
       // Trigger all instruments in the stage
-      const currentTime = audioContextRef.current.currentTime;
-      stageRef.current.trigger_all(currentTime);
-
-      // Generate audio buffer (1 second of audio)
-      const sampleRate = audioContextRef.current.sampleRate;
-      const bufferLength = sampleRate; // 1 second
-      const audioBuffer = audioContextRef.current.createBuffer(
-        1,
-        bufferLength,
-        sampleRate
-      );
-
-      // Get the channel data and fill it with WASM-generated samples
-      const channelData = audioBuffer.getChannelData(0);
-
-      for (let i = 0; i < bufferLength; i++) {
-        const time = currentTime + i / sampleRate;
-        channelData[i] = stageRef.current.tick(time);
-      }
-
-      // Create buffer source and play it
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
-      if (
-        spectrumAnalyzerRef.current &&
-        spectrumAnalyzerRef.current.getMonitoringNode()
-      ) {
-        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
-      } else {
-        source.connect(audioContextRef.current.destination);
-      }
-      source.start();
+      stageRef.current.trigger_all();
 
       console.log("All instruments triggered!");
     } catch (error) {
@@ -369,40 +336,7 @@ export default function WasmTest() {
 
     try {
       // Trigger specific instrument in the stage
-      const currentTime = audioContextRef.current.currentTime;
-      stageRef.current.trigger_instrument(index, currentTime);
-
-      // Generate audio buffer (1 second of audio)
-      const sampleRate = audioContextRef.current.sampleRate;
-      const bufferLength = sampleRate; // 1 second
-      const audioBuffer = audioContextRef.current.createBuffer(
-        1,
-        bufferLength,
-        sampleRate
-      );
-
-      // Get the channel data and fill it with WASM-generated samples
-      const channelData = audioBuffer.getChannelData(0);
-
-      for (let i = 0; i < bufferLength; i++) {
-        const time = currentTime + i / sampleRate;
-        channelData[i] = stageRef.current.tick(time);
-      }
-
-      // Create buffer source and play it
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
-      if (
-        spectrumAnalyzerRef.current &&
-        spectrumAnalyzerRef.current.getMonitoringNode()
-      ) {
-        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
-      } else {
-        source.connect(audioContextRef.current.destination);
-      }
-      source.start();
+      stageRef.current.trigger_instrument(index);
 
       console.log(`${name} triggered!`);
     } catch (error) {
@@ -516,8 +450,7 @@ export default function WasmTest() {
     }
 
     try {
-      const currentTime = audioContextRef.current.currentTime;
-      stageRef.current.release_instrument(index, currentTime);
+      stageRef.current.release_instrument(index);
       console.log(`${name} released!`);
     } catch (error) {
       console.error(`Failed to release ${name}:`, error);
@@ -532,8 +465,7 @@ export default function WasmTest() {
     }
 
     try {
-      const currentTime = audioContextRef.current.currentTime;
-      stageRef.current.release_all(currentTime);
+      stageRef.current.release_all();
       console.log("All instruments released!");
     } catch (error) {
       console.error("Failed to release all instruments:", error);
@@ -543,64 +475,14 @@ export default function WasmTest() {
 
   // Kick drum functions
   function triggerKickDrum() {
-    if (!audioContextRef.current || !kickDrumRef.current || !isPlaying) {
+    if (!audioContextRef.current || !stageRef.current || !isPlaying) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      // Stop any existing kick drum sound
-      if (kickAudioSourceRef.current) {
-        try {
-          kickAudioSourceRef.current.stop();
-        } catch (e) {
-          // Source might already be stopped, ignore error
-        }
-        kickAudioSourceRef.current = null;
-      }
-
-      // Trigger kick drum
-      const currentTime = audioContextRef.current.currentTime;
-      kickDrumRef.current.trigger(currentTime);
-
-      // Generate audio buffer (2 seconds for longer kick sounds)
-      const sampleRate = audioContextRef.current.sampleRate;
-      const bufferLength = sampleRate * 2; // 2 seconds
-      const audioBuffer = audioContextRef.current.createBuffer(
-        1,
-        bufferLength,
-        sampleRate
-      );
-
-      // Get the channel data and fill it with WASM-generated samples
-      const channelData = audioBuffer.getChannelData(0);
-
-      for (let i = 0; i < bufferLength; i++) {
-        const time = currentTime + i / sampleRate;
-        channelData[i] = kickDrumRef.current.tick(time);
-      }
-
-      // Create buffer source and play it
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
-      if (
-        spectrumAnalyzerRef.current &&
-        spectrumAnalyzerRef.current.getMonitoringNode()
-      ) {
-        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
-      } else {
-        source.connect(audioContextRef.current.destination);
-      }
-
-      // Clean up reference when source ends
-      source.onended = () => {
-        kickAudioSourceRef.current = null;
-      };
-
-      kickAudioSourceRef.current = source;
-      source.start();
+      // Trigger kick drum using the stage
+      stageRef.current.trigger_kick();
 
       console.log("Kick drum triggered!");
     } catch (error) {
@@ -610,14 +492,12 @@ export default function WasmTest() {
   }
 
   function releaseKickDrum() {
-    if (!audioContextRef.current || !kickDrumRef.current) {
+    if (!audioContextRef.current || !stageRef.current) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      const currentTime = audioContextRef.current.currentTime;
-      kickDrumRef.current.release(currentTime);
       console.log("Kick drum released!");
     } catch (error) {
       console.error("Failed to release kick drum:", error);
@@ -679,12 +559,12 @@ export default function WasmTest() {
   }
 
   function handleKickPresetChange(preset: string) {
-    if (!kickDrumRef.current) return;
+    if (!stageRef.current) return;
 
     setKickPreset(preset);
 
-    // Create new kick drum with preset
-    kickDrumRef.current = WasmKickDrum.new_with_preset(44100, preset);
+    // Load preset using the stage
+    stageRef.current.load_kick_preset(preset);
 
     // Update state to match preset values
     switch (preset) {
@@ -736,71 +616,21 @@ export default function WasmTest() {
 
   // Hi-hat functions
   function triggerHiHat(preset?: string) {
-    if (!audioContextRef.current || !hihatRef.current || !isPlaying) {
+    if (!audioContextRef.current || !stageRef.current || !isPlaying) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      // Stop any existing hi-hat sound
-      if (hihatAudioSourceRef.current) {
-        try {
-          hihatAudioSourceRef.current.stop();
-        } catch (e) {
-          // Source might already be stopped, ignore error
-        }
-        hihatAudioSourceRef.current = null;
-      }
-
       // Change preset if provided
       if (preset && preset !== hihatPreset) {
-        hihatRef.current = WasmHiHat.new_with_preset(44100, preset);
+        stageRef.current.load_hihat_preset(preset);
         setHihatPreset(preset);
         updateHihatConfigFromPreset(preset);
       }
 
-      // Trigger hi-hat
-      const currentTime = audioContextRef.current.currentTime;
-      hihatRef.current.trigger(currentTime);
-
-      // Generate audio buffer (1 second for hi-hat sounds)
-      const sampleRate = audioContextRef.current.sampleRate;
-      const bufferLength = sampleRate * 1; // 1 second
-      const audioBuffer = audioContextRef.current.createBuffer(
-        1,
-        bufferLength,
-        sampleRate
-      );
-
-      // Get the channel data and fill it with WASM-generated samples
-      const channelData = audioBuffer.getChannelData(0);
-
-      for (let i = 0; i < bufferLength; i++) {
-        const time = currentTime + i / sampleRate;
-        channelData[i] = hihatRef.current.tick(time);
-      }
-
-      // Create buffer source and play it
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
-      if (
-        spectrumAnalyzerRef.current &&
-        spectrumAnalyzerRef.current.getMonitoringNode()
-      ) {
-        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
-      } else {
-        source.connect(audioContextRef.current.destination);
-      }
-
-      // Clean up reference when source ends
-      source.onended = () => {
-        hihatAudioSourceRef.current = null;
-      };
-
-      hihatAudioSourceRef.current = source;
-      source.start();
+      // Trigger hi-hat using the stage
+      stageRef.current.trigger_hihat();
 
       console.log(`Hi-hat ${preset || hihatPreset} triggered!`);
     } catch (error) {
@@ -810,14 +640,12 @@ export default function WasmTest() {
   }
 
   function releaseHiHat() {
-    if (!audioContextRef.current || !hihatRef.current) {
+    if (!audioContextRef.current || !stageRef.current) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      const currentTime = audioContextRef.current.currentTime;
-      hihatRef.current.release(currentTime);
       console.log("Hi-hat released!");
     } catch (error) {
       console.error("Failed to release hi-hat:", error);
@@ -974,64 +802,14 @@ export default function WasmTest() {
 
   // Snare drum functions
   function triggerSnareDrum() {
-    if (!audioContextRef.current || !snareRef.current || !isPlaying) {
+    if (!audioContextRef.current || !stageRef.current || !isPlaying) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      // Stop any existing snare sound
-      if (snareAudioSourceRef.current) {
-        try {
-          snareAudioSourceRef.current.stop();
-        } catch (e) {
-          // Source might already be stopped, ignore error
-        }
-        snareAudioSourceRef.current = null;
-      }
-
-      // Trigger snare
-      const currentTime = audioContextRef.current.currentTime;
-      snareRef.current.trigger(currentTime);
-
-      // Generate audio buffer (1 second for snare sounds)
-      const sampleRate = audioContextRef.current.sampleRate;
-      const bufferLength = sampleRate * 1; // 1 second
-      const audioBuffer = audioContextRef.current.createBuffer(
-        1,
-        bufferLength,
-        sampleRate
-      );
-
-      // Get the channel data and fill it with WASM-generated samples
-      const channelData = audioBuffer.getChannelData(0);
-
-      for (let i = 0; i < bufferLength; i++) {
-        const time = currentTime + i / sampleRate;
-        channelData[i] = snareRef.current.tick(time);
-      }
-
-      // Create buffer source and play it
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
-      if (
-        spectrumAnalyzerRef.current &&
-        spectrumAnalyzerRef.current.getMonitoringNode()
-      ) {
-        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
-      } else {
-        source.connect(audioContextRef.current.destination);
-      }
-
-      // Clean up reference when source ends
-      source.onended = () => {
-        snareAudioSourceRef.current = null;
-      };
-
-      snareAudioSourceRef.current = source;
-      source.start();
+      // Trigger snare drum using the stage
+      stageRef.current.trigger_snare();
 
       console.log("Snare drum triggered!");
     } catch (error) {
@@ -1041,14 +819,12 @@ export default function WasmTest() {
   }
 
   function releaseSnareDrum() {
-    if (!audioContextRef.current || !snareRef.current) {
+    if (!audioContextRef.current || !stageRef.current) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      const currentTime = audioContextRef.current.currentTime;
-      snareRef.current.release(currentTime);
       console.log("Snare drum released!");
     } catch (error) {
       console.error("Failed to release snare drum:", error);
@@ -1178,64 +954,14 @@ export default function WasmTest() {
 
   // Tom drum functions
   function triggerTomDrum() {
-    if (!audioContextRef.current || !tomRef.current || !isPlaying) {
+    if (!audioContextRef.current || !stageRef.current || !isPlaying) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      // Stop any existing tom sound
-      if (tomAudioSourceRef.current) {
-        try {
-          tomAudioSourceRef.current.stop();
-        } catch (e) {
-          // Source might already be stopped, ignore error
-        }
-        tomAudioSourceRef.current = null;
-      }
-
-      // Trigger tom
-      const currentTime = audioContextRef.current.currentTime;
-      tomRef.current.trigger(currentTime);
-
-      // Generate audio buffer (2 seconds for tom sounds)
-      const sampleRate = audioContextRef.current.sampleRate;
-      const bufferLength = sampleRate * 2; // 2 seconds
-      const audioBuffer = audioContextRef.current.createBuffer(
-        1,
-        bufferLength,
-        sampleRate
-      );
-
-      // Get the channel data and fill it with WASM-generated samples
-      const channelData = audioBuffer.getChannelData(0);
-
-      for (let i = 0; i < bufferLength; i++) {
-        const time = currentTime + i / sampleRate;
-        channelData[i] = tomRef.current.tick(time);
-      }
-
-      // Create buffer source and play it
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-
-      // Connect to spectrum analyzer monitoring if available, otherwise directly to destination
-      if (
-        spectrumAnalyzerRef.current &&
-        spectrumAnalyzerRef.current.getMonitoringNode()
-      ) {
-        source.connect(spectrumAnalyzerRef.current.getMonitoringNode()!);
-      } else {
-        source.connect(audioContextRef.current.destination);
-      }
-
-      // Clean up reference when source ends
-      source.onended = () => {
-        tomAudioSourceRef.current = null;
-      };
-
-      tomAudioSourceRef.current = source;
-      source.start();
+      // Trigger tom drum using the stage
+      stageRef.current.trigger_tom();
 
       console.log("Tom drum triggered!");
     } catch (error) {
@@ -1245,14 +971,12 @@ export default function WasmTest() {
   }
 
   function releaseTomDrum() {
-    if (!audioContextRef.current || !tomRef.current) {
+    if (!audioContextRef.current || !stageRef.current) {
       alert('Audio not started yet. Click "Start Audio" first.');
       return;
     }
 
     try {
-      const currentTime = audioContextRef.current.currentTime;
-      tomRef.current.release(currentTime);
       console.log("Tom drum released!");
     } catch (error) {
       console.error("Failed to release tom drum:", error);
