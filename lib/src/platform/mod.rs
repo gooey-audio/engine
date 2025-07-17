@@ -90,12 +90,12 @@ impl AudioEngine {
 #[cfg(feature = "native")]
 pub mod cpal_output;
 
-#[cfg(feature = "web")]
-pub mod web_output;
+// #[cfg(feature = "web")]
+// pub mod web_output;
 
 // Re-export platform-specific types
 #[cfg(feature = "native")]
 pub use cpal_output::CpalOutput;
 
-#[cfg(feature = "web")]
-pub use web_output::WebOutput;
+// #[cfg(feature = "web")]
+// pub use web_output::WebOutput;
