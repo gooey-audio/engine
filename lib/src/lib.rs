@@ -361,6 +361,27 @@ pub mod web {
         pub fn get_saturation(&self) -> f32 {
             self.stage.get_saturation()
         }
+        
+        // Individual drum trigger methods
+        #[wasm_bindgen]
+        pub fn trigger_kick(&mut self) {
+            self.stage.trigger_kick();
+        }
+        
+        #[wasm_bindgen]
+        pub fn trigger_snare(&mut self) {
+            self.stage.trigger_snare();
+        }
+        
+        #[wasm_bindgen]
+        pub fn trigger_hihat(&mut self) {
+            self.stage.trigger_hihat();
+        }
+        
+        #[wasm_bindgen]
+        pub fn trigger_tom(&mut self) {
+            self.stage.trigger_tom();
+        }
     }
 
     #[wasm_bindgen]
