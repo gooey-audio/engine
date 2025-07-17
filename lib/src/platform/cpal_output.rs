@@ -1,15 +1,14 @@
-/// CPAL-based audio output implementation
-/// This module provides native audio output using the CPAL library
-
-use super::{AudioOutput, AudioState};
-use crate::stage::Stage;
+#[cfg(feature = "native")]
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     SizedSample, FromSample, Sample, Stream, Device, StreamConfig,
 };
+use super::{AudioOutput, AudioState};
+use crate::stage::Stage;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+#[cfg(feature = "native")]
 pub struct CpalOutput {
     stream: Option<Stream>,
     device: Option<Device>,
@@ -20,6 +19,7 @@ pub struct CpalOutput {
     sample_counter: Arc<Mutex<u64>>,
 }
 
+#[cfg(feature = "native")]
 impl CpalOutput {
     pub fn new() -> Self {
         Self {
@@ -170,6 +170,7 @@ impl CpalOutput {
     }
 }
 
+#[cfg(feature = "native")]
 impl AudioOutput for CpalOutput {
     fn initialize(&mut self, sample_rate: f32) -> Result<(), anyhow::Error> {
         self.sample_rate = sample_rate;

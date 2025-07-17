@@ -1,5 +1,5 @@
 pub mod oscillator;
 pub mod waveform;
 
-pub use oscillator::*;
-pub use waveform::*;
+pub use self::oscillator::*;
+pub use self::waveform::*;
