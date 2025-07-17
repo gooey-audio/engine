@@ -34,6 +34,7 @@ impl Oscillator {
 
     fn calculate_sine_output_from_freq(&self, freq: f32) -> f32 {
         let two_pi = 2.0 * std::f32::consts::PI;
+        // current_sample_index is now in samples, so use the original calculation
         (self.current_sample_index * freq * two_pi / self.sample_rate).sin()
     }
 
@@ -98,7 +99,10 @@ impl Oscillator {
     fn generative_waveform_time_based(&self, harmonic_index_increment: i32, gain_exponent: f32) -> f32 {
         let mut output = 0.0;
         let mut i = 1;
-        while !self.is_multiple_of_freq_above_nyquist(i as f32) {
+        let max_harmonics = (self.sample_rate / (2.0 * self.frequency_hz)) as i32;
+        let max_harmonics = max_harmonics.min(20); // Cap at 20 harmonics maximum
+        
+        while i <= max_harmonics && !self.is_multiple_of_freq_above_nyquist(i as f32) {
             let gain = 1.0 / (i as f32).powf(gain_exponent);
             output += gain * self.calculate_sine_output_from_freq(self.frequency_hz * i as f32);
             i += harmonic_index_increment;
@@ -130,7 +134,7 @@ impl Oscillator {
         (self.current_sample_index as u64).hash(&mut hasher);
         let hash = hasher.finish();
         
-        // Convert hash to float in range [-1.0, 1.0]
+        // Convert hash to float in range [-1, 1.0]
         let normalized = (hash as f32) / (u64::MAX as f32);
         (normalized * 2.0) - 1.0
     }
@@ -181,8 +185,8 @@ impl Oscillator {
             0.0
         };
         
-        // Calculate phase from elapsed time and frequency
-        self.current_sample_index = (elapsed_since_trigger * self.sample_rate) % self.sample_rate;
+        // Calculate phase in samples for consistent waveform generation
+        self.current_sample_index = elapsed_since_trigger * self.sample_rate;
         
         let raw_output = match self.waveform {
             Waveform::Sine => self.sine_wave_time_based(),
@@ -192,7 +196,15 @@ impl Oscillator {
             Waveform::RingMod => self.ring_mod_wave_time_based(),
             Waveform::Noise => self.noise_wave_time_based(),
         };
+        
+        // Simple anti-aliasing: reduce volume for high frequencies
+        let anti_alias_gain = if self.frequency_hz > self.sample_rate * 0.1 {
+            0.7
+        } else {
+            1.0
+        };
+        
         let envelope_amplitude = self.envelope.get_amplitude(current_time);
-        raw_output * envelope_amplitude * self.volume
+        raw_output * anti_alias_gain * envelope_amplitude * self.volume
     }
 }

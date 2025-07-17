@@ -10,6 +10,9 @@ pub mod instruments;
 pub mod effects;
 pub mod gen;
 
+// Platform abstraction layer
+pub mod platform;
+
 // WASM bindings (web)
 #[cfg(feature = "web")]
 pub mod web {
