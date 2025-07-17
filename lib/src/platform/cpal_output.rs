@@ -17,6 +17,7 @@ pub struct CpalOutput {
     sample_rate: f32,
     is_active: bool,
     start_time: Option<Instant>,
+    sample_counter: Arc<Mutex<u64>>,
 }
 
 impl CpalOutput {
@@ -28,6 +29,7 @@ impl CpalOutput {
             sample_rate: 44100.0,
             is_active: false,
             start_time: None,
+            sample_counter: Arc::new(Mutex::new(0)),
         }
     }
     
@@ -41,17 +43,18 @@ impl CpalOutput {
         let config = self.config.as_ref().ok_or_else(|| anyhow::anyhow!("Config not initialized"))?;
         
         let supported_config = device.default_output_config()?;
+        let sample_counter = self.sample_counter.clone();
         let stream = match supported_config.sample_format() {
-            cpal::SampleFormat::I8 => Self::make_stream::<i8>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::I16 => Self::make_stream::<i16>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::I32 => Self::make_stream::<i32>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::I64 => Self::make_stream::<i64>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::U8 => Self::make_stream::<u8>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::U16 => Self::make_stream::<u16>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::U32 => Self::make_stream::<u32>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::U64 => Self::make_stream::<u64>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::F32 => Self::make_stream::<f32>(device, config, stage, audio_state)?,
-            cpal::SampleFormat::F64 => Self::make_stream::<f64>(device, config, stage, audio_state)?,
+            cpal::SampleFormat::I8 => Self::make_stream::<i8>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::I16 => Self::make_stream::<i16>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::I32 => Self::make_stream::<i32>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::I64 => Self::make_stream::<i64>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::U8 => Self::make_stream::<u8>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::U16 => Self::make_stream::<u16>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::U32 => Self::make_stream::<u32>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::U64 => Self::make_stream::<u64>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::F32 => Self::make_stream::<f32>(device, config, stage, audio_state, sample_counter)?,
+            cpal::SampleFormat::F64 => Self::make_stream::<f64>(device, config, stage, audio_state, sample_counter)?,
             sample_format => return Err(anyhow::anyhow!("Unsupported sample format '{}'", sample_format)),
         };
         
@@ -86,12 +89,13 @@ impl CpalOutput {
         config: &StreamConfig,
         stage: Arc<Mutex<Stage>>,
         audio_state: Arc<Mutex<AudioState>>,
+        sample_counter: Arc<Mutex<u64>>,
     ) -> Result<Stream, anyhow::Error>
     where
         T: SizedSample + FromSample<f32>,
     {
         let num_channels = config.channels as usize;
-        let sample_rate = config.sample_rate.0 as f32;
+        let sample_rate = config.sample_rate.0 as f64; // Use f64 for precision
         let sample_duration = 1.0 / sample_rate;
         
         let err_fn = |err| eprintln!("Error building output sound stream: {}", err);
@@ -117,8 +121,8 @@ impl CpalOutput {
                     output,
                     &stage,
                     num_channels,
-                    start_time,
-                    sample_duration,
+                    &sample_counter,
+                    sample_rate,
                 );
             },
             err_fn,
@@ -133,19 +137,30 @@ impl CpalOutput {
         output: &mut [SampleType],
         stage: &Arc<Mutex<Stage>>,
         num_channels: usize,
-        start_time: Instant,
-        sample_duration: f32,
+        sample_counter: &Arc<Mutex<u64>>,
+        sample_rate: f64,
     ) where
         SampleType: Sample + FromSample<f32>,
     {
-        for (sample_index, frame) in output.chunks_mut(num_channels).enumerate() {
-            // Calculate time for this specific sample
-            let current_time = start_time.elapsed().as_secs_f32() + (sample_index as f32 * sample_duration);
+        let frames_to_process = output.len() / num_channels;
+        
+        // Get the current sample counter and increment it atomically
+        let start_sample = {
+            let mut counter = sample_counter.lock().unwrap();
+            let current = *counter;
+            *counter += frames_to_process as u64;
+            current
+        };
+        
+        // Lock the stage once for the entire buffer
+        let mut stage_guard = stage.lock().unwrap();
+        
+        for (frame_index, frame) in output.chunks_mut(num_channels).enumerate() {
+            // Calculate precise time using sample-based timing like Web Audio
+            let current_sample = start_sample + frame_index as u64;
+            let current_time = current_sample as f64 / sample_rate;
             
-            let value: SampleType = {
-                let mut stage_guard = stage.lock().unwrap();
-                SampleType::from_sample(stage_guard.tick(current_time))
-            };
+            let value: SampleType = SampleType::from_sample(stage_guard.tick(current_time as f32));
             
             // Copy the same value to all channels
             for sample in frame.iter_mut() {
@@ -164,6 +179,8 @@ impl AudioOutput for CpalOutput {
     
     fn start(&mut self) -> Result<(), anyhow::Error> {
         if let Some(stream) = &self.stream {
+            // Reset sample counter when starting
+            *self.sample_counter.lock().unwrap() = 0;
             stream.play()?;
             self.is_active = true;
             self.start_time = Some(Instant::now());

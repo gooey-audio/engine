@@ -5,8 +5,8 @@ Good starting point for integration of cpal into your application.
 use std::io::{self, Write};
 
 // Import the platform abstraction and audio engine
-use oscillator::platform::{AudioEngine, CpalOutput, AudioOutput};
 use oscillator::gen::oscillator::Oscillator;
+use oscillator::platform::{AudioEngine, AudioOutput, CpalOutput};
 
 // Native binary entry point for the oscillator engine
 
@@ -14,22 +14,23 @@ use oscillator::gen::oscillator::Oscillator;
 fn main() -> anyhow::Result<()> {
     // Create the audio engine
     let audio_engine = AudioEngine::new(44100.0);
-    
+
     // Configure the stage with an oscillator
     audio_engine.with_stage(|stage| {
-        let mut oscillator = Oscillator::new(44100.0, 200.0);
-        oscillator.waveform = oscillator::gen::waveform::Waveform::Triangle;
-        stage.add(oscillator);
+        let mut oscillator1 = Oscillator::new(44100.0, 200.0);
+        oscillator1.waveform = oscillator::gen::waveform::Waveform::Square;
+        stage.add(oscillator1);
+
+        // let mut oscillator2 = Oscillator::new(44100.0, 625.0);
+        // oscillator2.waveform = oscillator::gen::waveform::Waveform::Triangle;
+        // stage.add(oscillator2);
     });
-    
+
     // Create and configure the CPAL output
     let mut cpal_output = CpalOutput::new();
     cpal_output.initialize(44100.0)?;
-    cpal_output.create_stream_with_stage(
-        audio_engine.stage(),
-        audio_engine.audio_state(),
-    )?;
-    
+    cpal_output.create_stream_with_stage(audio_engine.stage(), audio_engine.audio_state())?;
+
     // Start the audio stream
     cpal_output.start()?;
 
