@@ -16,6 +16,7 @@ WORKDIR /app
 COPY lib/Cargo.toml ./
 COPY lib/Cargo.lock* ./
 COPY lib/src ./src
+COPY lib/examples ./examples
 
 # Build WASM library
 RUN wasm-pack build --target web --out-dir /wasm-output -- --features web
