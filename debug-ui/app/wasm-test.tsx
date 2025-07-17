@@ -11,6 +11,7 @@ import init, {
 
 import Sequencer from "./sequencer";
 import Mixer from "./mixer";
+import LFO from "./lfo";
 import { SpectrumAnalyzerWithRef } from "./spectrum-analyzer";
 import { SpectrogramDisplayWithRef } from "./spectrogram-display";
 
@@ -2496,6 +2497,9 @@ export default function WasmTest() {
             onTomVolumeChange={(volume) => handleTomConfigChange('volume', volume)}
             isLoaded={isLoaded}
           />
+
+          {/* LFO */}
+          <LFO stageRef={stageRef} />
 
           {/* Spectrogram Display */}
           <div>

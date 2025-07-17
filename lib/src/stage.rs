@@ -2,6 +2,7 @@ use crate::envelope::ADSRConfig;
 use crate::gen::oscillator::Oscillator;
 use crate::instruments::{KickDrum, KickConfig, SnareDrum, SnareConfig, HiHat, HiHatConfig, TomDrum, TomConfig};
 use crate::effects::BrickWallLimiter;
+use crate::modulation::{LFO, LFOConfig};
 
 pub struct Stage {
     pub sample_rate: f32,
@@ -14,6 +15,9 @@ pub struct Stage {
     pub snare: SnareDrum,
     pub hihat: HiHat,
     pub tom: TomDrum,
+    
+    // Modulation
+    pub lfo: LFO,
     
     // Harmonic distortion settings
     pub saturation: f32, // 0.0 to 1.0, where 0.0 is no distortion
@@ -52,6 +56,9 @@ impl Stage {
             snare: SnareDrum::with_config(sample_rate, SnareConfig::default()),
             hihat: HiHat::with_config(sample_rate, HiHatConfig::closed_default()),
             tom: TomDrum::with_config(sample_rate, TomConfig::default()),
+            
+            // Initialize LFO
+            lfo: LFO::new(sample_rate),
             
             // Initialize harmonic distortion
             saturation: 0.0, // No distortion by default
@@ -108,10 +115,13 @@ impl Stage {
 
         let mut output = 0.0;
         
+        // Update LFO and get modulation value
+        let lfo_modulation = self.lfo.tick(current_time);
+        
         // Add drum instrument outputs
         output += self.kick.tick(current_time);
         output += self.snare.tick(current_time);
-        output += self.hihat.tick(current_time);
+        output += self.hihat.tick_with_lfo_modulation(current_time, lfo_modulation);
         output += self.tom.tick(current_time);
         
         // Add legacy instruments for backward compatibility
@@ -399,6 +409,53 @@ impl Stage {
     /// Trigger the tom drum
     pub fn trigger_tom(&mut self) {
         self.tom.trigger(self.current_time);
+    }
+    
+    // LFO control methods
+    
+    /// Set the LFO frequency (speed) in Hz
+    pub fn set_lfo_frequency(&mut self, frequency: f32) {
+        self.lfo.set_frequency(frequency);
+    }
+    
+    /// Get the LFO frequency
+    pub fn get_lfo_frequency(&self) -> f32 {
+        self.lfo.get_frequency()
+    }
+    
+    /// Set the LFO depth (modulation amount)
+    pub fn set_lfo_depth(&mut self, depth: f32) {
+        self.lfo.set_depth(depth);
+    }
+    
+    /// Get the LFO depth
+    pub fn get_lfo_depth(&self) -> f32 {
+        self.lfo.get_depth()
+    }
+    
+    /// Set the LFO waveform
+    pub fn set_lfo_waveform(&mut self, waveform: crate::modulation::lfo::LFOWaveform) {
+        self.lfo.set_waveform(waveform);
+    }
+    
+    /// Get the LFO waveform
+    pub fn get_lfo_waveform(&self) -> crate::modulation::lfo::LFOWaveform {
+        self.lfo.get_waveform()
+    }
+    
+    /// Enable or disable the LFO
+    pub fn set_lfo_enabled(&mut self, enabled: bool) {
+        self.lfo.set_enabled(enabled);
+    }
+    
+    /// Check if the LFO is enabled
+    pub fn is_lfo_enabled(&self) -> bool {
+        self.lfo.is_enabled()
+    }
+    
+    /// Reset the LFO phase
+    pub fn reset_lfo_phase(&mut self) {
+        self.lfo.reset_phase();
     }
 }
 

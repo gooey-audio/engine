@@ -186,9 +186,21 @@ impl HiHat {
     }
 
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        self.tick_with_lfo_modulation(current_time, 0.0)
+    }
+
+    pub fn tick_with_lfo_modulation(&mut self, current_time: f32, lfo_modulation: f32) -> f32 {
         if !self.is_active {
             return 0.0;
         }
+
+        // Apply LFO modulation to filter cutoff frequency
+        let modulated_frequency = self.config.base_frequency + (lfo_modulation * 4000.0); // ±4kHz modulation range
+        let clamped_frequency = modulated_frequency.max(2000.0).min(20000.0); // Keep in reasonable range
+
+        // Update oscillator frequencies with LFO modulation
+        self.noise_oscillator.frequency_hz = clamped_frequency;
+        self.brightness_oscillator.frequency_hz = clamped_frequency * 2.0;
 
         // Get outputs from oscillators
         let noise_output = self.noise_oscillator.tick(current_time);

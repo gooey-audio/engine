@@ -9,6 +9,7 @@ pub mod stage;
 pub mod instruments;
 pub mod effects;
 pub mod gen;
+pub mod modulation;
 
 // Platform abstraction layer
 pub mod platform;
@@ -20,6 +21,7 @@ pub mod web {
     use super::instruments::{HiHat, HiHatConfig, KickConfig, KickDrum, SnareConfig, SnareDrum, TomConfig, TomDrum};
     use super::gen::oscillator::Oscillator;
     use super::stage::Stage;
+    use super::modulation::lfo::LFOWaveform;
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -381,6 +383,65 @@ pub mod web {
         #[wasm_bindgen]
         pub fn trigger_tom(&mut self) {
             self.stage.trigger_tom();
+        }
+        
+        // LFO control methods
+        
+        #[wasm_bindgen]
+        pub fn set_lfo_frequency(&mut self, frequency: f32) {
+            self.stage.set_lfo_frequency(frequency);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_lfo_frequency(&self) -> f32 {
+            self.stage.get_lfo_frequency()
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_lfo_depth(&mut self, depth: f32) {
+            self.stage.set_lfo_depth(depth);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_lfo_depth(&self) -> f32 {
+            self.stage.get_lfo_depth()
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_lfo_waveform(&mut self, waveform_type: u32) {
+            let waveform = match waveform_type {
+                0 => LFOWaveform::Sine,
+                1 => LFOWaveform::Square,
+                2 => LFOWaveform::Saw,
+                3 => LFOWaveform::Triangle,
+                _ => LFOWaveform::Sine, // Default to sine for invalid values
+            };
+            self.stage.set_lfo_waveform(waveform);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_lfo_waveform(&self) -> u32 {
+            match self.stage.get_lfo_waveform() {
+                LFOWaveform::Sine => 0,
+                LFOWaveform::Square => 1,
+                LFOWaveform::Saw => 2,
+                LFOWaveform::Triangle => 3,
+            }
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_lfo_enabled(&mut self, enabled: bool) {
+            self.stage.set_lfo_enabled(enabled);
+        }
+        
+        #[wasm_bindgen]
+        pub fn is_lfo_enabled(&self) -> bool {
+            self.stage.is_lfo_enabled()
+        }
+        
+        #[wasm_bindgen]
+        pub fn reset_lfo_phase(&mut self) {
+            self.stage.reset_lfo_phase();
         }
     }
 
