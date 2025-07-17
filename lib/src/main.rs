@@ -7,12 +7,12 @@ use cpal::{
     SizedSample,
 };
 use cpal::{FromSample, Sample};
-use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
+use std::sync::{Arc, Mutex};
 
 // Import the Stage and other components from our audio engine modules
 use oscillator::stage::Stage;
-use oscillator::oscillator::Oscillator;
+use oscillator::gen::oscillator::Oscillator;
 
 // Shared state for communication between main thread and audio callback
 pub struct AudioState {
@@ -38,15 +38,15 @@ fn main() -> anyhow::Result<()> {
     let audio_state = Arc::new(Mutex::new(AudioState::new()));
     let stream = stream_setup_for(audio_state.clone())?;
     stream.play()?;
-    
+
     println!("Press '1' to trigger drum hit, 'q' to quit");
-    
+
     // Main input loop
     loop {
         let mut input = String::new();
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
-        
+
         match input.trim() {
             "1" => {
                 println!("Triggering drum hit!");
@@ -62,7 +62,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -71,8 +71,9 @@ fn main() {
     println!("This binary is only available with the 'native' feature enabled.");
 }
 
-
-pub fn stream_setup_for(audio_state: Arc<Mutex<AudioState>>) -> Result<cpal::Stream, anyhow::Error>
+pub fn stream_setup_for(
+    audio_state: Arc<Mutex<AudioState>>,
+) -> Result<cpal::Stream, anyhow::Error>
 where
 {
     let (_host, device, config) = host_device_setup()?;
@@ -119,35 +120,49 @@ where
 {
     let num_channels = config.channels as usize;
     let mut stage = Stage::new(config.sample_rate.0 as f32);
-    
+
     // Add an oscillator to the stage
-    let oscillator = Oscillator::new(config.sample_rate.0 as f32, 300.0); // Lower frequency for drum-like sound
+    let mut oscillator = Oscillator::new(config.sample_rate.0 as f32, 200.0); // Lower frequency for drum-like sound
+    oscillator.waveform = oscillator::gen::waveform::Waveform::Triangle;
     stage.add(oscillator);
-    
+
     let err_fn = |err| eprintln!("Error building output sound stream: {}", err);
 
     let time_at_start = std::time::Instant::now();
     println!("Time at start: {:?}", time_at_start);
 
+    let time_at_start_clone = time_at_start;
+    let sample_rate = config.sample_rate.0 as f32;
+    let sample_duration = 1.0 / sample_rate;
+
     let stream = device.build_output_stream(
         config,
         move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
-            let time_since_start = std::time::Instant::now()
-                .duration_since(time_at_start)
-                .as_secs_f32();
-            
+            let time_at_start_clone = time_at_start_clone;
+            let sample_rate = sample_rate;
+            let sample_duration = sample_duration;
+
             // Check if we should trigger the stage
             {
                 let mut state = audio_state.lock().unwrap();
                 if state.should_trigger {
-                    stage.trigger_all(time_since_start);
+                    let current_time = std::time::Instant::now()
+                        .duration_since(time_at_start_clone)
+                        .as_secs_f32();
+                    stage.trigger_all(current_time);
                     state.should_trigger = false;
-                    state.trigger_time = time_since_start;
-                    println!("Drum hit triggered at {:.2}s", time_since_start);
+                    state.trigger_time = current_time;
+                    println!("Drum hit triggered at {:.2}s", current_time);
                 }
             }
-            
-            process_frame(output, &mut stage, num_channels, time_since_start)
+
+            process_frame(
+                output,
+                &mut stage,
+                num_channels,
+                time_at_start_clone,
+                sample_duration,
+            )
         },
         err_fn,
         None,
@@ -160,11 +175,18 @@ fn process_frame<SampleType>(
     output: &mut [SampleType],
     stage: &mut Stage,
     num_channels: usize,
-    current_time: f32,
+    time_at_start: std::time::Instant,
+    sample_duration: f32,
 ) where
     SampleType: Sample + FromSample<f32>,
 {
-    for frame in output.chunks_mut(num_channels) {
+    for (sample_index, frame) in output.chunks_mut(num_channels).enumerate() {
+        // Calculate time for this specific sample
+        let current_time = std::time::Instant::now()
+            .duration_since(time_at_start)
+            .as_secs_f32()
+            + (sample_index as f32 * sample_duration);
+
         let value: SampleType = SampleType::from_sample(stage.tick(current_time));
 
         // copy the same value to all channels
