@@ -17,6 +17,9 @@ pub struct Stage {
     
     // Harmonic distortion settings
     pub saturation: f32, // 0.0 to 1.0, where 0.0 is no distortion
+    
+    // Current time tracking
+    current_time: f32,
 }
 
 /// A 16-step drum sequencer that manages pattern playback for multiple instruments
@@ -52,6 +55,9 @@ impl Stage {
             
             // Initialize harmonic distortion
             saturation: 0.0, // No distortion by default
+            
+            // Initialize current time
+            current_time: 0.0,
         }
     }
 
@@ -62,6 +68,9 @@ impl Stage {
     }
 
     pub fn tick(&mut self, current_time: f32) -> f32 {
+        // Update internal time tracking
+        self.current_time = current_time;
+        
         // Update sequencer and trigger instruments if needed
         if self.sequencer.is_playing {
             self.sequencer.update(current_time);
@@ -119,15 +128,15 @@ impl Stage {
         self.limiter.process(output)
     }
 
-    pub fn trigger_all(&mut self, time: f32) {
+    pub fn trigger_all(&mut self) {
         for instrument in &mut self.instruments {
-            instrument.trigger(time);
+            instrument.trigger(self.current_time);
         }
     }
 
-    pub fn trigger_instrument(&mut self, index: usize, time: f32) {
+    pub fn trigger_instrument(&mut self, index: usize) {
         if let Some(instrument) = self.instruments.get_mut(index) {
-            instrument.trigger(time);
+            instrument.trigger(self.current_time);
         }
     }
 
@@ -145,15 +154,15 @@ impl Stage {
         }
     }
 
-    pub fn release_instrument(&mut self, index: usize, time: f32) {
+    pub fn release_instrument(&mut self, index: usize) {
         if let Some(instrument) = self.instruments.get_mut(index) {
-            instrument.release(time);
+            instrument.release(self.current_time);
         }
     }
 
-    pub fn release_all(&mut self, time: f32) {
+    pub fn release_all(&mut self) {
         for instrument in &mut self.instruments {
-            instrument.release(time);
+            instrument.release(self.current_time);
         }
     }
 
@@ -370,6 +379,26 @@ impl Stage {
     /// Get the current saturation level
     pub fn get_saturation(&self) -> f32 {
         self.saturation
+    }
+    
+    /// Trigger the kick drum
+    pub fn trigger_kick(&mut self) {
+        self.kick.trigger(self.current_time);
+    }
+    
+    /// Trigger the snare drum
+    pub fn trigger_snare(&mut self) {
+        self.snare.trigger(self.current_time);
+    }
+    
+    /// Trigger the hi-hat
+    pub fn trigger_hihat(&mut self) {
+        self.hihat.trigger(self.current_time);
+    }
+    
+    /// Trigger the tom drum
+    pub fn trigger_tom(&mut self) {
+        self.tom.trigger(self.current_time);
     }
 }
 

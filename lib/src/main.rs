@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
     // Start the audio stream
     cpal_output.start()?;
 
-    println!("Press '1' to trigger oscillator, 'q' to quit");
+    println!("Press '1' to trigger oscillator, '2' to trigger kick, 'q' to quit");
 
     // Main input loop
     loop {
@@ -47,12 +47,18 @@ fn main() -> anyhow::Result<()> {
                 println!("Triggering oscillator!");
                 audio_engine.trigger_all();
             }
+            "2" => {
+                println!("Triggering kick!");
+                let mut stage = audio_engine.stage_mut();
+                stage.trigger_kick();
+                // audio_engine.trigger_kick();
+            }
             "q" => {
                 println!("Quitting...");
                 break;
             }
             _ => {
-                println!("Press '1' to trigger oscillator, 'q' to quit");
+                println!("Press '1' to trigger oscillator, '2' to trigger kick, 'q' to quit");
             }
         }
     }
