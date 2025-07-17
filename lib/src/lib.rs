@@ -94,13 +94,13 @@ pub mod web {
         }
 
         #[wasm_bindgen]
-        pub fn trigger_all(&mut self, time: f32) {
-            self.stage.trigger_all(time);
+        pub fn trigger_all(&mut self) {
+            self.stage.trigger_all();
         }
 
         #[wasm_bindgen]
-        pub fn trigger_instrument(&mut self, index: usize, time: f32) {
-            self.stage.trigger_instrument(index, time);
+        pub fn trigger_instrument(&mut self, index: usize) {
+            self.stage.trigger_instrument(index);
         }
 
         #[wasm_bindgen]
@@ -114,13 +114,13 @@ pub mod web {
         }
 
         #[wasm_bindgen]
-        pub fn release_instrument(&mut self, index: usize, time: f32) {
-            self.stage.release_instrument(index, time);
+        pub fn release_instrument(&mut self, index: usize) {
+            self.stage.release_instrument(index);
         }
 
         #[wasm_bindgen]
-        pub fn release_all(&mut self, time: f32) {
-            self.stage.release_all(time);
+        pub fn release_all(&mut self) {
+            self.stage.release_all();
         }
 
         #[wasm_bindgen]
@@ -360,6 +360,27 @@ pub mod web {
         #[wasm_bindgen]
         pub fn get_saturation(&self) -> f32 {
             self.stage.get_saturation()
+        }
+        
+        // Individual drum trigger methods
+        #[wasm_bindgen]
+        pub fn trigger_kick(&mut self) {
+            self.stage.trigger_kick();
+        }
+        
+        #[wasm_bindgen]
+        pub fn trigger_snare(&mut self) {
+            self.stage.trigger_snare();
+        }
+        
+        #[wasm_bindgen]
+        pub fn trigger_hihat(&mut self) {
+            self.stage.trigger_hihat();
+        }
+        
+        #[wasm_bindgen]
+        pub fn trigger_tom(&mut self) {
+            self.stage.trigger_tom();
         }
     }
 

@@ -110,7 +110,7 @@ impl CpalOutput {
                     if state.should_trigger {
                         let current_time = start_time.elapsed().as_secs_f32();
                         let mut stage_guard = stage.lock().unwrap();
-                        stage_guard.trigger_all(current_time);
+                        stage_guard.trigger_all();
                         state.should_trigger = false;
                         state.trigger_time = current_time;
                         println!("Triggered at {:.2}s", current_time);

@@ -84,6 +84,11 @@ impl AudioEngine {
         let mut stage = self.stage.lock().unwrap();
         f(&mut stage)
     }
+    
+    /// Get a locked reference to the stage for direct access
+    pub fn stage_mut(&self) -> std::sync::MutexGuard<Stage> {
+        self.stage.lock().unwrap()
+    }
 }
 
 // Platform-specific implementations
