@@ -5,8 +5,8 @@ Good starting point for integration of cpal into your application.
 use std::io::{self, Write};
 
 // Import the platform abstraction and audio engine
-use oscillator::gen::oscillator::Oscillator;
-use oscillator::platform::{AudioEngine, AudioOutput, CpalOutput};
+use libgooey::gen::oscillator::Oscillator;
+use libgooey::platform::{AudioEngine, AudioOutput, CpalOutput};
 
 // Native binary entry point for the oscillator engine
 
@@ -18,11 +18,11 @@ fn main() -> anyhow::Result<()> {
     // Configure the stage with an oscillator
     audio_engine.with_stage(|stage| {
         let mut oscillator1 = Oscillator::new(44100.0, 200.0);
-        oscillator1.waveform = oscillator::gen::waveform::Waveform::Square;
+        oscillator1.waveform = libgooey::gen::waveform::Waveform::Square;
         stage.add(oscillator1);
 
         // let mut oscillator2 = Oscillator::new(44100.0, 625.0);
-        // oscillator2.waveform = oscillator::gen::waveform::Waveform::Triangle;
+        // oscillator2.waveform = libgooey::gen::waveform::Waveform::Triangle;
         // stage.add(oscillator2);
     });
 

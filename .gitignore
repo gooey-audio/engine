@@ -120,3 +120,5 @@ benches/target/
 
 # Test artifacts
 test-results/ 
+
+.opencode/**

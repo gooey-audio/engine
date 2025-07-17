@@ -100,7 +100,7 @@ pub mod cpal_output;
 
 // Re-export platform-specific types
 #[cfg(feature = "native")]
-pub use cpal_output::CpalOutput;
+pub use self::cpal_output::CpalOutput;
 
 // #[cfg(feature = "web")]
 // pub use web_output::WebOutput;

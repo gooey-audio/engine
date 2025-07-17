@@ -1,7 +1,7 @@
 use crate::envelope::ADSRConfig;
 use crate::gen::oscillator::Oscillator;
 use crate::instruments::{KickDrum, KickConfig, SnareDrum, SnareConfig, HiHat, HiHatConfig, TomDrum, TomConfig};
-use crate::effects::BrickWallLimiter;
+use crate::effects::limiter::BrickWallLimiter;
 
 pub struct Stage {
     pub sample_rate: f32,
