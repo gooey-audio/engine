@@ -5,7 +5,7 @@ Minimal code to start the audio engine and trigger snare drum hits.
 use std::io::{self, Write};
 
 // Import the platform abstraction and audio engine
-use oscillator::platform::{AudioEngine, AudioOutput, CpalOutput};
+use libgooey::platform::{AudioEngine, AudioOutput, CpalOutput};
 
 // CLI example for snare drum
 #[cfg(feature = "native")]
