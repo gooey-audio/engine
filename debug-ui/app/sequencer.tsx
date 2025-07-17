@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { WasmStage } from '../public/wasm/oscillator.js';
+import { WasmStage } from '../public/wasm/libgooey.js';
 
 interface SequencerProps {
   stage: WasmStage | null;

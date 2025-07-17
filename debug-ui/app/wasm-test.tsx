@@ -7,7 +7,7 @@ import init, {
   WasmHiHat,
   WasmSnareDrum,
   WasmTomDrum,
-} from "../public/wasm/oscillator.js";
+} from "../public/wasm/libgooey.js";
 
 import Sequencer from "./sequencer";
 import Mixer from "./mixer";
