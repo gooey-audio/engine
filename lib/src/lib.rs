@@ -94,13 +94,13 @@ pub mod web {
         }
 
         #[wasm_bindgen]
-        pub fn trigger_all(&mut self, time: f32) {
-            self.stage.trigger_all(time);
+        pub fn trigger_all(&mut self) {
+            self.stage.trigger_all();
         }
 
         #[wasm_bindgen]
-        pub fn trigger_instrument(&mut self, index: usize, time: f32) {
-            self.stage.trigger_instrument(index, time);
+        pub fn trigger_instrument(&mut self, index: usize) {
+            self.stage.trigger_instrument(index);
         }
 
         #[wasm_bindgen]
@@ -114,13 +114,13 @@ pub mod web {
         }
 
         #[wasm_bindgen]
-        pub fn release_instrument(&mut self, index: usize, time: f32) {
-            self.stage.release_instrument(index, time);
+        pub fn release_instrument(&mut self, index: usize) {
+            self.stage.release_instrument(index);
         }
 
         #[wasm_bindgen]
-        pub fn release_all(&mut self, time: f32) {
-            self.stage.release_all(time);
+        pub fn release_all(&mut self) {
+            self.stage.release_all();
         }
 
         #[wasm_bindgen]
