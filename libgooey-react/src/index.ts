@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from "react";
 
 // WASM types - these will be imported from the CDN-hosted WASM
 export interface WasmStage {
@@ -11,7 +11,13 @@ export interface WasmStage {
   get_instrument_volume(index: number): number;
   release_instrument(index: number): void;
   release_all(): void;
-  set_instrument_adsr(index: number, attack: number, decay: number, sustain: number, release: number): void;
+  set_instrument_adsr(
+    index: number,
+    attack: number,
+    decay: number,
+    sustain: number,
+    release: number
+  ): void;
   set_instrument_frequency(index: number, frequency_hz: number): void;
   get_instrument_frequency(index: number): number;
   set_instrument_waveform(index: number, waveform_type: number): void;
@@ -36,10 +42,41 @@ export interface WasmStage {
   get_snare_frequency(): number;
   get_hihat_frequency(): number;
   get_tom_frequency(): number;
-  set_kick_config(frequency: number, punch: number, sub: number, click: number, decay: number, pitch_drop: number, volume: number): void;
-  set_snare_config(frequency: number, tonal: number, noise: number, crack: number, decay: number, pitch_drop: number, volume: number): void;
-  set_hihat_config(frequency: number, resonance: number, brightness: number, decay: number, attack: number, volume: number, is_open: boolean): void;
-  set_tom_config(frequency: number, tonal: number, punch: number, decay: number, pitch_drop: number, volume: number): void;
+  set_kick_config(
+    frequency: number,
+    punch: number,
+    sub: number,
+    click: number,
+    decay: number,
+    pitch_drop: number,
+    volume: number
+  ): void;
+  set_snare_config(
+    frequency: number,
+    tonal: number,
+    noise: number,
+    crack: number,
+    decay: number,
+    pitch_drop: number,
+    volume: number
+  ): void;
+  set_hihat_config(
+    frequency: number,
+    resonance: number,
+    brightness: number,
+    decay: number,
+    attack: number,
+    volume: number,
+    is_open: boolean
+  ): void;
+  set_tom_config(
+    frequency: number,
+    tonal: number,
+    punch: number,
+    decay: number,
+    pitch_drop: number,
+    volume: number
+  ): void;
   load_kick_preset(preset_name: string): void;
   load_snare_preset(preset_name: string): void;
   load_hihat_preset(preset_name: string): void;
@@ -66,7 +103,15 @@ export interface WasmKickDrum {
   set_sub(sub_amount: number): void;
   set_click(click_amount: number): void;
   set_pitch_drop(pitch_drop: number): void;
-  set_config(kick_frequency: number, punch_amount: number, sub_amount: number, click_amount: number, decay_time: number, pitch_drop: number, volume: number): void;
+  set_config(
+    kick_frequency: number,
+    punch_amount: number,
+    sub_amount: number,
+    click_amount: number,
+    decay_time: number,
+    pitch_drop: number,
+    volume: number
+  ): void;
 }
 
 export interface WasmHiHat {
@@ -85,7 +130,15 @@ export interface WasmHiHat {
   set_resonance(resonance: number): void;
   set_attack(attack_time: number): void;
   set_open(is_open: boolean): void;
-  set_config(base_frequency: number, resonance: number, brightness: number, decay_time: number, attack_time: number, volume: number, is_open: boolean): void;
+  set_config(
+    base_frequency: number,
+    resonance: number,
+    brightness: number,
+    decay_time: number,
+    attack_time: number,
+    volume: number,
+    is_open: boolean
+  ): void;
 }
 
 export interface WasmSnareDrum {
@@ -102,7 +155,15 @@ export interface WasmSnareDrum {
   set_noise(noise_amount: number): void;
   set_crack(crack_amount: number): void;
   set_pitch_drop(pitch_drop: number): void;
-  set_config(snare_frequency: number, tonal_amount: number, noise_amount: number, crack_amount: number, decay_time: number, pitch_drop: number, volume: number): void;
+  set_config(
+    snare_frequency: number,
+    tonal_amount: number,
+    noise_amount: number,
+    crack_amount: number,
+    decay_time: number,
+    pitch_drop: number,
+    volume: number
+  ): void;
 }
 
 export interface WasmTomDrum {
@@ -118,7 +179,14 @@ export interface WasmTomDrum {
   set_tonal(tonal_amount: number): void;
   set_punch(punch_amount: number): void;
   set_pitch_drop(pitch_drop: number): void;
-  set_config(tom_frequency: number, tonal_amount: number, punch_amount: number, decay_time: number, pitch_drop: number, volume: number): void;
+  set_config(
+    tom_frequency: number,
+    tonal_amount: number,
+    punch_amount: number,
+    decay_time: number,
+    pitch_drop: number,
+    volume: number
+  ): void;
 }
 
 export interface LibGooeyWasm {
@@ -148,15 +216,15 @@ export interface UseLibGooeyReturn {
   hiHat: WasmHiHat | null;
   snareDrum: WasmSnareDrum | null;
   tomDrum: WasmTomDrum | null;
-  
+
   // Audio context
   audioContext: AudioContext | null;
-  
+
   // State
   isLoaded: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   initialize: () => Promise<void>;
   createStage: (sampleRate?: number) => Promise<WasmStage>;
@@ -164,13 +232,12 @@ export interface UseLibGooeyReturn {
   createHiHat: (sampleRate?: number) => Promise<WasmHiHat>;
   createSnareDrum: (sampleRate?: number) => Promise<WasmSnareDrum>;
   createTomDrum: (sampleRate?: number) => Promise<WasmTomDrum>;
-  
+
   // Cleanup
   cleanup: () => void;
 }
 
-// Default WASM URL - relative path for local development
-const DEFAULT_WASM_URL = '/wasm/libgooey.js';
+const DEFAULT_WASM_URL = "/wasm/libgooey.js";
 
 // Global WASM module cache
 let wasmModule: LibGooeyWasm | null = null;
@@ -180,11 +247,11 @@ async function loadWasmModule(wasmUrl: string): Promise<LibGooeyWasm> {
   if (wasmModule) {
     return wasmModule;
   }
-  
+
   if (wasmPromise) {
     return wasmPromise;
   }
-  
+
   wasmPromise = (async () => {
     try {
       // Dynamic import of the WASM module from CDN
@@ -193,87 +260,112 @@ async function loadWasmModule(wasmUrl: string): Promise<LibGooeyWasm> {
       wasmModule = module as LibGooeyWasm;
       return wasmModule;
     } catch (error) {
-      console.error('Failed to load LibGooey WASM module:', error);
+      console.error("Failed to load LibGooey WASM module:", error);
       throw error;
     }
   })();
-  
+
   return wasmPromise;
 }
 
-export function useLibGooey(options: UseLibGooeyOptions = {}): UseLibGooeyReturn {
+export function useLibGooey(
+  options: UseLibGooeyOptions = {}
+): UseLibGooeyReturn {
   const {
     wasmUrl = DEFAULT_WASM_URL,
     sampleRate = 44100,
-    autoInit = true
+    autoInit = true,
   } = options;
-  
+
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const stageRef = useRef<WasmStage | null>(null);
   const kickDrumRef = useRef<WasmKickDrum | null>(null);
   const hiHatRef = useRef<WasmHiHat | null>(null);
   const snareDrumRef = useRef<WasmSnareDrum | null>(null);
   const tomDrumRef = useRef<WasmTomDrum | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  
+
   const initialize = useCallback(async () => {
     if (isLoaded || isLoading) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Load WASM module
       const wasm = await loadWasmModule(wasmUrl);
-      
+
       // Initialize audio context
       audioContextRef.current = new AudioContext();
-      
+
       // Create stage
       stageRef.current = new wasm.WasmStage(sampleRate);
-      
+
       // Create individual instruments
       kickDrumRef.current = new wasm.WasmKickDrum(sampleRate);
-      hiHatRef.current = wasm.WasmHiHat.new_with_preset(sampleRate, 'closed_default');
+      hiHatRef.current = wasm.WasmHiHat.new_with_preset(
+        sampleRate,
+        "closed_default"
+      );
       snareDrumRef.current = new wasm.WasmSnareDrum(sampleRate);
       tomDrumRef.current = new wasm.WasmTomDrum(sampleRate);
-      
+
       setIsLoaded(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize LibGooey');
+      setError(
+        err instanceof Error ? err.message : "Failed to initialize LibGooey"
+      );
     } finally {
       setIsLoading(false);
     }
   }, [wasmUrl, sampleRate, isLoaded, isLoading]);
-  
-  const createStage = useCallback(async (customSampleRate?: number) => {
-    const wasm = await loadWasmModule(wasmUrl);
-    return new wasm.WasmStage(customSampleRate || sampleRate);
-  }, [wasmUrl, sampleRate]);
-  
-  const createKickDrum = useCallback(async (customSampleRate?: number) => {
-    const wasm = await loadWasmModule(wasmUrl);
-    return new wasm.WasmKickDrum(customSampleRate || sampleRate);
-  }, [wasmUrl, sampleRate]);
-  
-  const createHiHat = useCallback(async (customSampleRate?: number) => {
-    const wasm = await loadWasmModule(wasmUrl);
-    return wasm.WasmHiHat.new_with_preset(customSampleRate || sampleRate, 'closed_default');
-  }, [wasmUrl, sampleRate]);
-  
-  const createSnareDrum = useCallback(async (customSampleRate?: number) => {
-    const wasm = await loadWasmModule(wasmUrl);
-    return new wasm.WasmSnareDrum(customSampleRate || sampleRate);
-  }, [wasmUrl, sampleRate]);
-  
-  const createTomDrum = useCallback(async (customSampleRate?: number) => {
-    const wasm = await loadWasmModule(wasmUrl);
-    return new wasm.WasmTomDrum(customSampleRate || sampleRate);
-  }, [wasmUrl, sampleRate]);
-  
+
+  const createStage = useCallback(
+    async (customSampleRate?: number) => {
+      const wasm = await loadWasmModule(wasmUrl);
+      return new wasm.WasmStage(customSampleRate || sampleRate);
+    },
+    [wasmUrl, sampleRate]
+  );
+
+  const createKickDrum = useCallback(
+    async (customSampleRate?: number) => {
+      const wasm = await loadWasmModule(wasmUrl);
+      return new wasm.WasmKickDrum(customSampleRate || sampleRate);
+    },
+    [wasmUrl, sampleRate]
+  );
+
+  const createHiHat = useCallback(
+    async (customSampleRate?: number) => {
+      const wasm = await loadWasmModule(wasmUrl);
+      return wasm.WasmHiHat.new_with_preset(
+        customSampleRate || sampleRate,
+        "closed_default"
+      );
+    },
+    [wasmUrl, sampleRate]
+  );
+
+  const createSnareDrum = useCallback(
+    async (customSampleRate?: number) => {
+      const wasm = await loadWasmModule(wasmUrl);
+      return new wasm.WasmSnareDrum(customSampleRate || sampleRate);
+    },
+    [wasmUrl, sampleRate]
+  );
+
+  const createTomDrum = useCallback(
+    async (customSampleRate?: number) => {
+      const wasm = await loadWasmModule(wasmUrl);
+      return new wasm.WasmTomDrum(customSampleRate || sampleRate);
+    },
+    [wasmUrl, sampleRate]
+  );
+
   const cleanup = useCallback(() => {
     // Free WASM instances
     stageRef.current?.free();
@@ -281,10 +373,10 @@ export function useLibGooey(options: UseLibGooeyOptions = {}): UseLibGooeyReturn
     hiHatRef.current?.free();
     snareDrumRef.current?.free();
     tomDrumRef.current?.free();
-    
+
     // Close audio context
     audioContextRef.current?.close();
-    
+
     // Reset refs
     stageRef.current = null;
     kickDrumRef.current = null;
@@ -292,23 +384,23 @@ export function useLibGooey(options: UseLibGooeyOptions = {}): UseLibGooeyReturn
     snareDrumRef.current = null;
     tomDrumRef.current = null;
     audioContextRef.current = null;
-    
+
     setIsLoaded(false);
     setError(null);
   }, []);
-  
+
   // Auto-initialize if requested
   useEffect(() => {
     if (autoInit && !isLoaded && !isLoading) {
       initialize();
     }
   }, [autoInit, isLoaded, isLoading, initialize]);
-  
+
   // Cleanup on unmount
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
-  
+
   return {
     // WASM instances
     stage: stageRef.current,
@@ -316,15 +408,15 @@ export function useLibGooey(options: UseLibGooeyOptions = {}): UseLibGooeyReturn
     hiHat: hiHatRef.current,
     snareDrum: snareDrumRef.current,
     tomDrum: tomDrumRef.current,
-    
+
     // Audio context
     audioContext: audioContextRef.current,
-    
+
     // State
     isLoaded,
     isLoading,
     error,
-    
+
     // Actions
     initialize,
     createStage,
@@ -332,8 +424,8 @@ export function useLibGooey(options: UseLibGooeyOptions = {}): UseLibGooeyReturn
     createHiHat,
     createSnareDrum,
     createTomDrum,
-    
+
     // Cleanup
-    cleanup
+    cleanup,
   };
-} 
+}
