@@ -87,6 +87,39 @@ export interface WasmStage {
   trigger_snare(): void;
   trigger_hihat(): void;
   trigger_tom(): void;
+  
+  // New compositional instrument methods
+  add_instrument(instrument: WasmInstrument): number;
+  trigger_composable_instrument(index: number): void;
+  release_composable_instrument(index: number): void;
+  set_composable_instrument_volume(index: number, volume: number): void;
+  get_composable_instrument_volume(index: number): number;
+  is_composable_instrument_active(index: number): boolean;
+  composable_instrument_count(): number;
+  set_composable_instrument_enabled(index: number, enabled: boolean): void;
+  is_composable_instrument_enabled(index: number): boolean;
+}
+
+export interface WasmInstrument {
+  free(): void;
+  add_oscillator(frequency_hz: number): number;
+  add_filter(cutoff_freq: number, resonance: number): number;
+  set_envelope(attack: number, decay: number, sustain: number, release: number): void;
+  set_volume(volume: number): void;
+  get_volume(): number;
+  set_oscillator_waveform(index: number, waveform_type: number): void;
+  set_oscillator_frequency(index: number, frequency_hz: number): void;
+  set_oscillator_volume(index: number, volume: number): void;
+  set_filter_cutoff(index: number, cutoff_freq: number): void;
+  set_filter_resonance(index: number, resonance: number): void;
+  oscillator_count(): number;
+  filter_count(): number;
+  set_enabled(enabled: boolean): void;
+  is_enabled(): boolean;
+  is_active(): boolean;
+  trigger(time: number): void;
+  release(time: number): void;
+  tick(current_time: number): number;
 }
 
 export interface WasmKickDrum {
@@ -191,6 +224,7 @@ export interface WasmTomDrum {
 
 export interface LibGooeyWasm {
   WasmStage: new (sample_rate: number) => WasmStage;
+  WasmInstrument: new (sample_rate: number) => WasmInstrument;
   WasmKickDrum: new (sample_rate: number) => WasmKickDrum;
   WasmHiHat: {
     new (sample_rate: number): WasmHiHat;
@@ -228,6 +262,7 @@ export interface UseLibGooeyReturn {
   // Actions
   initialize: () => Promise<void>;
   createStage: (sampleRate?: number) => Promise<WasmStage>;
+  createInstrument: (sampleRate?: number) => Promise<WasmInstrument>;
   createKickDrum: (sampleRate?: number) => Promise<WasmKickDrum>;
   createHiHat: (sampleRate?: number) => Promise<WasmHiHat>;
   createSnareDrum: (sampleRate?: number) => Promise<WasmSnareDrum>;
@@ -322,50 +357,37 @@ export function useLibGooey(
       setIsLoading(false);
     }
   }, [wasmUrl, sampleRate, isLoaded, isLoading]);
-
-  const createStage = useCallback(
-    async (customSampleRate?: number) => {
-      const wasm = await loadWasmModule(wasmUrl);
-      return new wasm.WasmStage(customSampleRate || sampleRate);
-    },
-    [wasmUrl, sampleRate]
-  );
-
-  const createKickDrum = useCallback(
-    async (customSampleRate?: number) => {
-      const wasm = await loadWasmModule(wasmUrl);
-      return new wasm.WasmKickDrum(customSampleRate || sampleRate);
-    },
-    [wasmUrl, sampleRate]
-  );
-
-  const createHiHat = useCallback(
-    async (customSampleRate?: number) => {
-      const wasm = await loadWasmModule(wasmUrl);
-      return wasm.WasmHiHat.new_with_preset(
-        customSampleRate || sampleRate,
-        "closed_default"
-      );
-    },
-    [wasmUrl, sampleRate]
-  );
-
-  const createSnareDrum = useCallback(
-    async (customSampleRate?: number) => {
-      const wasm = await loadWasmModule(wasmUrl);
-      return new wasm.WasmSnareDrum(customSampleRate || sampleRate);
-    },
-    [wasmUrl, sampleRate]
-  );
-
-  const createTomDrum = useCallback(
-    async (customSampleRate?: number) => {
-      const wasm = await loadWasmModule(wasmUrl);
-      return new wasm.WasmTomDrum(customSampleRate || sampleRate);
-    },
-    [wasmUrl, sampleRate]
-  );
-
+  
+  const createStage = useCallback(async (customSampleRate?: number) => {
+    const wasm = await loadWasmModule(wasmUrl);
+    return new wasm.WasmStage(customSampleRate || sampleRate);
+  }, [wasmUrl, sampleRate]);
+  
+  const createInstrument = useCallback(async (customSampleRate?: number) => {
+    const wasm = await loadWasmModule(wasmUrl);
+    return new wasm.WasmInstrument(customSampleRate || sampleRate);
+  }, [wasmUrl, sampleRate]);
+  
+  const createKickDrum = useCallback(async (customSampleRate?: number) => {
+    const wasm = await loadWasmModule(wasmUrl);
+    return new wasm.WasmKickDrum(customSampleRate || sampleRate);
+  }, [wasmUrl, sampleRate]);
+  
+  const createHiHat = useCallback(async (customSampleRate?: number) => {
+    const wasm = await loadWasmModule(wasmUrl);
+    return wasm.WasmHiHat.new_with_preset(customSampleRate || sampleRate, 'closed_default');
+  }, [wasmUrl, sampleRate]);
+  
+  const createSnareDrum = useCallback(async (customSampleRate?: number) => {
+    const wasm = await loadWasmModule(wasmUrl);
+    return new wasm.WasmSnareDrum(customSampleRate || sampleRate);
+  }, [wasmUrl, sampleRate]);
+  
+  const createTomDrum = useCallback(async (customSampleRate?: number) => {
+    const wasm = await loadWasmModule(wasmUrl);
+    return new wasm.WasmTomDrum(customSampleRate || sampleRate);
+  }, [wasmUrl, sampleRate]);
+  
   const cleanup = useCallback(() => {
     // Free WASM instances
     stageRef.current?.free();
@@ -420,6 +442,7 @@ export function useLibGooey(
     // Actions
     initialize,
     createStage,
+    createInstrument,
     createKickDrum,
     createHiHat,
     createSnareDrum,

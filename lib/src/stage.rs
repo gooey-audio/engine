@@ -1,11 +1,13 @@
 use crate::envelope::ADSRConfig;
 use crate::gen::oscillator::Oscillator;
+use crate::instrument::Instrument;
 use crate::instruments::{KickDrum, KickConfig, SnareDrum, SnareConfig, HiHat, HiHatConfig, TomDrum, TomConfig};
 use crate::effects::limiter::BrickWallLimiter;
 
 pub struct Stage {
     pub sample_rate: f32,
     pub instruments: Vec<Oscillator>, // Keep for backward compatibility
+    pub composite_instruments: Vec<Instrument>, // New compositional instruments
     pub limiter: BrickWallLimiter,
     pub sequencer: Sequencer,
     
@@ -44,6 +46,7 @@ impl Stage {
         Self {
             sample_rate,
             instruments: Vec::new(),
+            composite_instruments: Vec::new(),
             limiter: BrickWallLimiter::new(1.0), // Default threshold at 1.0 to prevent clipping
             sequencer: Sequencer::new(),
             
@@ -116,6 +119,11 @@ impl Stage {
         
         // Add legacy instruments for backward compatibility
         for instrument in &mut self.instruments {
+            output += instrument.tick(current_time);
+        }
+        
+        // Add composite instruments
+        for instrument in &mut self.composite_instruments {
             output += instrument.tick(current_time);
         }
         
@@ -399,6 +407,74 @@ impl Stage {
     /// Trigger the tom drum
     pub fn trigger_tom(&mut self) {
         self.tom.trigger(self.current_time);
+    }
+    
+    // Compositional instrument management methods
+    
+    /// Add a composite instrument to the stage
+    pub fn add_composite_instrument(&mut self, instrument: Instrument) -> usize {
+        self.composite_instruments.push(instrument);
+        self.composite_instruments.len() - 1 // Return the index of the added instrument
+    }
+    
+    /// Trigger a composite instrument by index
+    pub fn trigger_composite_instrument(&mut self, index: usize) {
+        if let Some(instrument) = self.composite_instruments.get_mut(index) {
+            instrument.trigger(self.current_time);
+        }
+    }
+    
+    /// Release a composite instrument by index
+    pub fn release_composite_instrument(&mut self, index: usize) {
+        if let Some(instrument) = self.composite_instruments.get_mut(index) {
+            instrument.release(self.current_time);
+        }
+    }
+    
+    /// Set the volume of a composite instrument
+    pub fn set_composite_instrument_volume(&mut self, index: usize, volume: f32) {
+        if let Some(instrument) = self.composite_instruments.get_mut(index) {
+            instrument.set_volume(volume);
+        }
+    }
+    
+    /// Get the volume of a composite instrument
+    pub fn get_composite_instrument_volume(&self, index: usize) -> f32 {
+        if let Some(instrument) = self.composite_instruments.get(index) {
+            instrument.get_volume()
+        } else {
+            0.0
+        }
+    }
+    
+    /// Check if a composite instrument is active
+    pub fn is_composite_instrument_active(&self, index: usize) -> bool {
+        if let Some(instrument) = self.composite_instruments.get(index) {
+            instrument.is_active()
+        } else {
+            false
+        }
+    }
+    
+    /// Get the number of composite instruments
+    pub fn composite_instrument_count(&self) -> usize {
+        self.composite_instruments.len()
+    }
+    
+    /// Enable or disable a composite instrument
+    pub fn set_composite_instrument_enabled(&mut self, index: usize, enabled: bool) {
+        if let Some(instrument) = self.composite_instruments.get_mut(index) {
+            instrument.set_enabled(enabled);
+        }
+    }
+    
+    /// Check if a composite instrument is enabled
+    pub fn is_composite_instrument_enabled(&self, index: usize) -> bool {
+        if let Some(instrument) = self.composite_instruments.get(index) {
+            instrument.is_enabled()
+        } else {
+            false
+        }
     }
 }
 

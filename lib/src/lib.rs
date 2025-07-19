@@ -4,6 +4,7 @@ pub mod audio_state;
 pub mod envelope;
 pub mod filters;
 pub mod stage;
+pub mod instrument;
 
 // New organized modules
 pub mod instruments;
@@ -20,6 +21,7 @@ pub mod web {
     use super::instruments::{HiHat, HiHatConfig, KickConfig, KickDrum, SnareConfig, SnareDrum, TomConfig, TomDrum};
     use super::gen::oscillator::Oscillator;
     use super::stage::Stage;
+    use super::instrument::Instrument;
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -65,6 +67,120 @@ pub mod web {
         #[wasm_bindgen]
         pub fn get_modulator_frequency(&self) -> f32 {
             self.oscillator.get_modulator_frequency()
+        }
+    }
+
+    #[wasm_bindgen]
+    pub struct WasmInstrument {
+        instrument: Instrument,
+    }
+
+    #[wasm_bindgen]
+    impl WasmInstrument {
+        #[wasm_bindgen(constructor)]
+        pub fn new(sample_rate: f32) -> WasmInstrument {
+            WasmInstrument {
+                instrument: Instrument::new(sample_rate),
+            }
+        }
+
+        #[wasm_bindgen]
+        pub fn add_oscillator(&mut self, frequency_hz: f32) -> usize {
+            self.instrument.add_oscillator(frequency_hz)
+        }
+
+        #[wasm_bindgen]
+        pub fn add_filter(&mut self, cutoff_freq: f32, resonance: f32) -> usize {
+            self.instrument.add_filter(cutoff_freq, resonance)
+        }
+
+        #[wasm_bindgen]
+        pub fn set_envelope(&mut self, attack: f32, decay: f32, sustain: f32, release: f32) {
+            self.instrument.set_envelope(attack, decay, sustain, release);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_volume(&mut self, volume: f32) {
+            self.instrument.set_volume(volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn get_volume(&self) -> f32 {
+            self.instrument.get_volume()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_oscillator_waveform(&mut self, index: usize, waveform_type: u32) {
+            let waveform = match waveform_type {
+                0 => crate::gen::waveform::Waveform::Sine,
+                1 => crate::gen::waveform::Waveform::Square,
+                2 => crate::gen::waveform::Waveform::Saw,
+                3 => crate::gen::waveform::Waveform::Triangle,
+                4 => crate::gen::waveform::Waveform::RingMod,
+                5 => crate::gen::waveform::Waveform::Noise,
+                _ => crate::gen::waveform::Waveform::Sine, // Default to sine for invalid values
+            };
+            self.instrument.set_oscillator_waveform(index, waveform);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_oscillator_frequency(&mut self, index: usize, frequency_hz: f32) {
+            self.instrument.set_oscillator_frequency(index, frequency_hz);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_oscillator_volume(&mut self, index: usize, volume: f32) {
+            self.instrument.set_oscillator_volume(index, volume);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_filter_cutoff(&mut self, index: usize, cutoff_freq: f32) {
+            self.instrument.set_filter_cutoff(index, cutoff_freq);
+        }
+
+        #[wasm_bindgen]
+        pub fn set_filter_resonance(&mut self, index: usize, resonance: f32) {
+            self.instrument.set_filter_resonance(index, resonance);
+        }
+
+        #[wasm_bindgen]
+        pub fn oscillator_count(&self) -> usize {
+            self.instrument.oscillator_count()
+        }
+
+        #[wasm_bindgen]
+        pub fn filter_count(&self) -> usize {
+            self.instrument.filter_count()
+        }
+
+        #[wasm_bindgen]
+        pub fn set_enabled(&mut self, enabled: bool) {
+            self.instrument.set_enabled(enabled);
+        }
+
+        #[wasm_bindgen]
+        pub fn is_enabled(&self) -> bool {
+            self.instrument.is_enabled()
+        }
+
+        #[wasm_bindgen]
+        pub fn is_active(&self) -> bool {
+            self.instrument.is_active()
+        }
+
+        #[wasm_bindgen]
+        pub fn trigger(&mut self, time: f32) {
+            self.instrument.trigger(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn release(&mut self, time: f32) {
+            self.instrument.release(time);
+        }
+
+        #[wasm_bindgen]
+        pub fn tick(&mut self, current_time: f32) -> f32 {
+            self.instrument.tick(current_time)
         }
     }
 
@@ -381,6 +497,53 @@ pub mod web {
         #[wasm_bindgen]
         pub fn trigger_tom(&mut self) {
             self.stage.trigger_tom();
+        }
+        
+        // Compositional instrument methods
+        
+        #[wasm_bindgen]
+        pub fn add_instrument(&mut self, instrument: WasmInstrument) -> usize {
+            self.stage.add_composite_instrument(instrument.instrument)
+        }
+        
+        #[wasm_bindgen]
+        pub fn trigger_composable_instrument(&mut self, index: usize) {
+            self.stage.trigger_composite_instrument(index);
+        }
+        
+        #[wasm_bindgen]
+        pub fn release_composable_instrument(&mut self, index: usize) {
+            self.stage.release_composite_instrument(index);
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_composable_instrument_volume(&mut self, index: usize, volume: f32) {
+            self.stage.set_composite_instrument_volume(index, volume);
+        }
+        
+        #[wasm_bindgen]
+        pub fn get_composable_instrument_volume(&self, index: usize) -> f32 {
+            self.stage.get_composite_instrument_volume(index)
+        }
+        
+        #[wasm_bindgen]
+        pub fn is_composable_instrument_active(&self, index: usize) -> bool {
+            self.stage.is_composite_instrument_active(index)
+        }
+        
+        #[wasm_bindgen]
+        pub fn composable_instrument_count(&self) -> usize {
+            self.stage.composite_instrument_count()
+        }
+        
+        #[wasm_bindgen]
+        pub fn set_composable_instrument_enabled(&mut self, index: usize, enabled: bool) {
+            self.stage.set_composite_instrument_enabled(index, enabled);
+        }
+        
+        #[wasm_bindgen]
+        pub fn is_composable_instrument_enabled(&self, index: usize) -> bool {
+            self.stage.is_composite_instrument_enabled(index)
         }
     }
 
