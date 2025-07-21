@@ -1,192 +1,96 @@
 "use client";
 
 import { useRef, useCallback, useEffect } from 'react';
+import { WebAudioStage, KickConfig, KickConfigDefaults } from '../lib';
 
-interface KickConfig {
-  kickFrequency: number;     // Base frequency (40-80Hz typical)
-  punchAmount: number;       // Mid-frequency presence (0.0-1.0)
-  subAmount: number;         // Sub-bass presence (0.0-1.0)
-  clickAmount: number;       // High-frequency click (0.0-1.0)
-  decayTime: number;         // Overall decay length in seconds
-  pitchDrop: number;         // Frequency sweep amount (0.0-1.0)
-  volume: number;            // Overall volume (0.0-1.0)
-}
-
-const DEFAULT_CONFIG: KickConfig = {
-  kickFrequency: 60.0,
-  punchAmount: 0.80,
-  subAmount: 0.80,
-  clickAmount: 0.20,
-  decayTime: 0.28,
-  pitchDrop: 0.20,
-  volume: 0.80
-};
-
-export function useWebAudioKick(config: KickConfig = DEFAULT_CONFIG) {
-  const audioContextRef = useRef<AudioContext | null>(null);
+export function useWebAudioKick(config?: Partial<KickConfig>) {
+  const stageRef = useRef<WebAudioStage | null>(null);
   const isInitialized = useRef(false);
 
   useEffect(() => {
-    if (!audioContextRef.current && typeof window !== 'undefined') {
-      try {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      } catch (error) {
-        console.error('Failed to create AudioContext:', error);
+    if (!stageRef.current) {
+      stageRef.current = new WebAudioStage();
+      // Apply custom config if provided
+      if (config && stageRef.current.isActive) {
+        stageRef.current.setKickConfig(config);
       }
     }
+    
+    return () => {
+      if (stageRef.current) {
+        stageRef.current.dispose();
+        stageRef.current = null;
+        isInitialized.current = false;
+      }
+    };
   }, []);
 
   const initializeAudio = useCallback(async () => {
-    if (!audioContextRef.current) return false;
+    if (!stageRef.current) return false;
 
-    if (audioContextRef.current.state === 'suspended') {
-      await audioContextRef.current.resume();
+    const success = await stageRef.current.initialize();
+    isInitialized.current = success;
+    
+    // Apply custom config after initialization if provided
+    if (success && config) {
+      stageRef.current.setKickConfig(config);
     }
     
-    isInitialized.current = true;
-    return true;
-  }, []);
+    return success;
+  }, [config]);
 
-  const triggerKick = useCallback(async () => {
-    if (!audioContextRef.current || !isInitialized.current) {
-      console.warn('Audio context not initialized');
+  const triggerKick = useCallback(() => {
+    if (!stageRef.current || !isInitialized.current) {
+      console.warn('Audio stage not initialized');
       return;
     }
+    
+    stageRef.current.triggerKick();
+  }, []);
 
-    const ctx = audioContextRef.current;
-    const now = ctx.currentTime;
-    
-    // Create master gain node
-    const masterGain = ctx.createGain();
-    masterGain.connect(ctx.destination);
-    masterGain.gain.value = config.volume;
-
-    // Calculate pitch envelope parameters
-    const pitchStartMultiplier = 1.0 + config.pitchDrop * 2.0;
-    
-    // Sub oscillator: Deep sine wave
-    const subOsc = ctx.createOscillator();
-    const subGain = ctx.createGain();
-    subOsc.type = 'sine';
-    subOsc.frequency.setValueAtTime(config.kickFrequency, now);
-    
-    // Apply pitch envelope to sub oscillator
-    const subFreqEnd = config.kickFrequency;
-    const subFreqStart = config.kickFrequency * pitchStartMultiplier;
-    subOsc.frequency.setValueAtTime(subFreqStart, now);
-    subOsc.frequency.exponentialRampToValueAtTime(subFreqEnd, now + config.decayTime);
-    
-    subGain.gain.setValueAtTime(0, now);
-    subGain.gain.setTargetAtTime(config.subAmount * config.volume, now + 0.001, 0.001);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + config.decayTime);
-    
-    subOsc.connect(subGain);
-    subGain.connect(masterGain);
-    
-    // Punch oscillator: Triangle wave for mid-range impact  
-    const punchOsc = ctx.createOscillator();
-    const punchGain = ctx.createGain();
-    punchOsc.type = 'triangle';
-    
-    const punchFreqStart = config.kickFrequency * 2.5 * pitchStartMultiplier;
-    const punchFreqEnd = config.kickFrequency * 2.5;
-    punchOsc.frequency.setValueAtTime(punchFreqStart, now);
-    punchOsc.frequency.exponentialRampToValueAtTime(punchFreqEnd, now + config.decayTime);
-    
-    punchGain.gain.setValueAtTime(0, now);
-    punchGain.gain.setTargetAtTime(config.punchAmount * config.volume * 0.7, now + 0.001, 0.001);
-    punchGain.gain.exponentialRampToValueAtTime(0.001, now + config.decayTime);
-    
-    punchOsc.connect(punchGain);
-    punchGain.connect(masterGain);
-
-    // Click oscillator: High-frequency filtered noise transient
-    // Create noise buffer
-    const bufferSize = ctx.sampleRate * (config.decayTime * 0.2);
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
+  const setConfig = useCallback((newConfig: Partial<KickConfig>) => {
+    if (stageRef.current) {
+      stageRef.current.setKickConfig(newConfig);
     }
-    
-    const clickSource = ctx.createBufferSource();
-    const clickGain = ctx.createGain();
-    const clickFilter = ctx.createBiquadFilter();
-    
-    clickSource.buffer = noiseBuffer;
-    clickFilter.type = 'highpass';
-    clickFilter.frequency.value = 8000;
-    clickFilter.Q.value = 4.0;
-    
-    clickGain.gain.setValueAtTime(0, now);
-    clickGain.gain.setTargetAtTime(config.clickAmount * config.volume * 0.3, now + 0.001, 0.001);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, now + config.decayTime * 0.2);
-    
-    clickSource.connect(clickFilter);
-    clickFilter.connect(clickGain);
-    clickGain.connect(masterGain);
+  }, []);
 
-    // FM snap for beater sound - simplified version
-    const fmCarrier = ctx.createOscillator();
-    const fmModulator = ctx.createOscillator();
-    const fmModGain = ctx.createGain();
-    const fmGain = ctx.createGain();
-    
-    fmCarrier.type = 'sine';
-    fmCarrier.frequency.value = 100;
-    fmModulator.type = 'sine';
-    fmModulator.frequency.value = 300;
-    
-    fmModGain.gain.value = 50; // Modulation depth
-    fmGain.gain.setValueAtTime(0, now);
-    fmGain.gain.setTargetAtTime(0.1 * config.volume, now + 0.001, 0.001);
-    fmGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-    
-    fmModulator.connect(fmModGain);
-    fmModGain.connect(fmCarrier.frequency);
-    fmCarrier.connect(fmGain);
-    fmGain.connect(masterGain);
-
-    // Start and stop all oscillators
-    const stopTime = now + Math.max(config.decayTime, 0.5);
-    
-    subOsc.start(now);
-    subOsc.stop(stopTime);
-    
-    punchOsc.start(now);
-    punchOsc.stop(stopTime);
-    
-    clickSource.start(now);
-    
-    fmCarrier.start(now);
-    fmCarrier.stop(now + 0.1);
-    fmModulator.start(now);
-    fmModulator.stop(now + 0.1);
-
-  }, [config]);
+  const setPreset = useCallback((preset: 'default' | 'punchy' | 'deep' | 'tight') => {
+    if (stageRef.current) {
+      stageRef.current.setKickPreset(preset);
+    }
+  }, []);
 
   return {
     triggerKick,
     initializeAudio,
+    setConfig,
+    setPreset,
+    stage: stageRef.current,
+    isInitialized: isInitialized.current,
     isAudioSupported: typeof window !== 'undefined' && ('AudioContext' in window || 'webkitAudioContext' in window)
   };
 }
 
 export default function WebAudioKickTest() {
-  const { triggerKick, initializeAudio, isAudioSupported } = useWebAudioKick();
+  const { triggerKick, initializeAudio, setPreset, isAudioSupported, isInitialized } = useWebAudioKick();
 
   const handleInitialize = async () => {
     const success = await initializeAudio();
     if (success) {
-      console.log('WebAudio initialized successfully');
+      console.log('WebAudio stage initialized successfully');
     } else {
-      console.error('Failed to initialize WebAudio');
+      console.error('Failed to initialize WebAudio stage');
     }
   };
 
-  const handleTriggerKick = async () => {
-    await triggerKick();
+  const handleTriggerKick = () => {
+    triggerKick();
     console.log('WebAudio kick triggered!');
+  };
+
+  const handlePresetChange = (preset: 'default' | 'punchy' | 'deep' | 'tight') => {
+    setPreset(preset);
+    console.log(`Kick preset changed to: ${preset}`);
   };
 
   if (!isAudioSupported) {
@@ -204,16 +108,59 @@ export default function WebAudioKickTest() {
       <div className="space-y-3">
         <button
           onClick={handleInitialize}
-          className="w-full px-4 py-3 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+          disabled={isInitialized}
+          className={`w-full px-4 py-3 text-white rounded transition-colors ${
+            isInitialized 
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
         >
-          Initialize WebAudio
+          {isInitialized ? '✅ WebAudio Initialized' : 'Initialize WebAudio'}
         </button>
+        
         <button
           onClick={handleTriggerKick}
-          className="w-full px-4 py-3 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+          disabled={!isInitialized}
+          className={`w-full px-4 py-3 text-white rounded transition-colors ${
+            !isInitialized
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-red-500 hover:bg-red-600'
+          }`}
         >
           🥁 Trigger WebAudio Kick
         </button>
+        
+        {isInitialized && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">Presets:</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handlePresetChange('default')}
+                className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
+              >
+                Default
+              </button>
+              <button
+                onClick={() => handlePresetChange('punchy')}
+                className="px-3 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors text-sm"
+              >
+                Punchy
+              </button>
+              <button
+                onClick={() => handlePresetChange('deep')}
+                className="px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors text-sm"
+              >
+                Deep
+              </button>
+              <button
+                onClick={() => handlePresetChange('tight')}
+                className="px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors text-sm"
+              >
+                Tight
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
