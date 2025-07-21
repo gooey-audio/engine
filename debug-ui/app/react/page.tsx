@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useLibGooey } from "libgooey-react";
+import WebAudioKickTest from "../webAudioKick";
 
 export default function ReactTestPage() {
   const {
@@ -106,10 +107,10 @@ export default function ReactTestPage() {
         ✅ Audio engine loaded successfully!
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {/* Individual Drums */}
         <div className="bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Individual Drums</h2>
+          <h2 className="text-xl font-semibold mb-4">WASM Drums</h2>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={triggerKick}
@@ -137,6 +138,9 @@ export default function ReactTestPage() {
             </button>
           </div>
         </div>
+
+        {/* WebAudio Kick */}
+        <WebAudioKickTest />
 
         {/* Sequencer */}
         <div className="bg-gray-50 p-6 rounded-lg">
