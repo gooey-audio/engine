@@ -19,10 +19,17 @@ export default function ReactTestPage() {
   const triggerKick = () => {
     const ctx = audioContext;
     if (ctx && stage) {
-      const kick = makeKick(ctx);
-      stage.addInstrument("kick", kick);
+      const kick1 = makeKick(ctx, 200, 800);
 
+      const kick2 = makeKick(ctx, 1500, 2000);
+
+      stage.addInstrument("kick", kick1);
+      stage.addInstrument("kick2", kick2);
+
+      // TODO
+      // allow trigger of n names
       stage.trigger("kick");
+      stage.trigger("kick2");
 
       // const osc = ctx.createOscillator();
       // osc.type = "sine";
