@@ -1,70 +1,93 @@
 "use client";
 
 import React from "react";
-import { useLibGooey } from "libgooey-react";
+import { useLibGooey } from "@/src/libgooey";
+import { makeKick } from "@/src/kick";
+
+// import WebAudioKickTest from "../webAudioKick";
 
 export default function ReactTestPage() {
-  const {
-    stage,
-    kickDrum,
-    hiHat,
-    snareDrum,
-    tomDrum,
-    audioContext,
-    isLoaded,
-    isLoading,
-    error,
-    initialize,
-  } = useLibGooey({
-    autoInit: false, // Manual initialization for demo
-  });
+  const { audioContext, isLoaded, isLoading, error, initialize, stage } =
+    useLibGooey({
+      autoInit: false, // Manual initialization for demo
+    });
 
   const handleInitialize = async () => {
     await initialize();
   };
 
   const triggerKick = () => {
-    if (kickDrum) {
-      kickDrum.trigger(0);
+    const ctx = audioContext;
+    if (ctx && stage) {
+      const kick1 = makeKick(ctx, 200, 800);
+
+      const kick2 = makeKick(ctx, 1500, 2000);
+
+      stage.addInstrument("kick", kick1);
+      stage.addInstrument("kick2", kick2);
+
+      // TODO
+      // allow trigger of n names
+      stage.trigger("kick");
+      stage.trigger("kick2");
+
+      // const osc = ctx.createOscillator();
+      // osc.type = "sine";
+      // const gain = ctx.createGain();
+      // osc.connect(gain);
+      // gain.connect(ctx.destination);
+
+      // // // Kick drum envelope
+      // const now = ctx.currentTime;
+      // osc.frequency.setValueAtTime(150, now);
+      // // osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
+      // gain.gain.setValueAtTime(1, now);
+      // gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      // osc.start(now);
+      // osc.stop(now + 0.5);
+      // // osc.onended = () => {
+      // //   gain.disconnect();
+      // // };
       console.log("Kick triggered!");
     }
   };
 
-  const triggerHiHat = () => {
-    if (hiHat) {
-      hiHat.trigger(0);
-      console.log("Hi-Hat triggered!");
-    }
-  };
+  // const triggerHiHat = () => {
+  //   if (hiHat) {
+  //     hiHat.trigger(0);
+  //     console.log("Hi-Hat triggered!");
+  //   }
+  // };
 
-  const triggerSnare = () => {
-    if (snareDrum) {
-      snareDrum.trigger(0);
-      console.log("Snare triggered!");
-    }
-  };
+  // const triggerSnare = () => {
+  //   if (snareDrum) {
+  //     snareDrum.trigger(0);
+  //     console.log("Snare triggered!");
+  //   }
+  // };
 
-  const triggerTom = () => {
-    if (tomDrum) {
-      tomDrum.trigger(0);
-      console.log("Tom triggered!");
-    }
-  };
+  // const triggerTom = () => {
+  //   if (tomDrum) {
+  //     tomDrum.trigger(0);
+  //     console.log("Tom triggered!");
+  //   }
+  // };
 
-  const startSequencer = () => {
-    if (stage) {
-      stage.sequencer_set_default_patterns();
-      stage.sequencer_play();
-      console.log("Sequencer started!");
-    }
-  };
+  // const startSequencer = () => {
+  //   if (stage) {
+  //     stage.sequencer_set_default_patterns();
+  //     stage.sequencer_play();
+  //     console.log("Sequencer started!");
+  //   }
+  // };
 
-  const stopSequencer = () => {
-    if (stage) {
-      stage.sequencer_stop();
-      console.log("Sequencer stopped!");
-    }
-  };
+  // const stopSequencer = () => {
+  //   if (stage) {
+  //     stage.sequencer_stop();
+  //     console.log("Sequencer stopped!");
+  //   }
+  // };
 
   if (isLoading) {
     return (
@@ -106,105 +129,7 @@ export default function ReactTestPage() {
         ✅ Audio engine loaded successfully!
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Individual Drums */}
-        <div className="bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Individual Drums</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={triggerKick}
-              className="px-4 py-3 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-            >
-              🥁 Kick
-            </button>
-            <button
-              onClick={triggerSnare}
-              className="px-4 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            >
-              🥁 Snare
-            </button>
-            <button
-              onClick={triggerHiHat}
-              className="px-4 py-3 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
-            >
-              🔔 Hi-Hat
-            </button>
-            <button
-              onClick={triggerTom}
-              className="px-4 py-3 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-            >
-              🥁 Tom
-            </button>
-          </div>
-        </div>
-
-        {/* Sequencer */}
-        <div className="bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Sequencer</h2>
-          <div className="space-y-3">
-            <button
-              onClick={startSequencer}
-              className="w-full px-4 py-3 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
-            >
-              ▶️ Start Sequencer
-            </button>
-            <button
-              onClick={stopSequencer}
-              className="w-full px-4 py-3 bg-pink-500 text-white rounded hover:bg-pink-600 transition-colors"
-            >
-              ⏹️ Stop Sequencer
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Status */}
-      <div className="mt-8 bg-gray-50 p-6 rounded-lg">
-        <h3 className="text-lg font-semibold mb-4">Status</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-          <div>
-            <span className="font-medium">Audio Context:</span>
-            <span className={audioContext ? "text-green-600" : "text-red-600"}>
-              {audioContext ? " ✅ Active" : " ❌ Inactive"}
-            </span>
-          </div>
-          <div>
-            <span className="font-medium">Stage:</span>
-            <span className={stage ? "text-green-600" : "text-red-600"}>
-              {stage ? " ✅ Ready" : " ❌ Not ready"}
-            </span>
-          </div>
-          <div>
-            <span className="font-medium">Kick Drum:</span>
-            <span className={kickDrum ? "text-green-600" : "text-red-600"}>
-              {kickDrum ? " ✅ Ready" : " ❌ Not ready"}
-            </span>
-          </div>
-          <div>
-            <span className="font-medium">Hi-Hat:</span>
-            <span className={hiHat ? "text-green-600" : "text-red-600"}>
-              {hiHat ? " ✅ Ready" : " ❌ Not ready"}
-            </span>
-          </div>
-          <div>
-            <span className="font-medium">Snare:</span>
-            <span className={snareDrum ? "text-green-600" : "text-red-600"}>
-              {snareDrum ? " ✅ Ready" : " ❌ Not ready"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="mt-8 bg-blue-50 p-6 rounded-lg">
-        <h3 className="text-lg font-semibold mb-4">Instructions</h3>
-        <ul className="list-disc list-inside space-y-2 text-sm">
-          <li>Click "Initialize Audio" to load the WASM module</li>
-          <li>Click individual drum buttons to trigger sounds</li>
-          <li>Use the sequencer to play automatic patterns</li>
-          <li>Check the browser console for detailed logs</li>
-        </ul>
-      </div>
+      <button onClick={triggerKick}>Kick</button>
     </div>
   );
 }
